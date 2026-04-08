@@ -49,3 +49,47 @@ exports.getProductReviews = async (productId) => {
     .populate('user', 'name')
     .sort({ createdAt: -1 });
 };
+
+// ✅ update review
+exports.updateReview = async (reviewId, userId, data) => {
+  const review = await Review.findById(reviewId);
+
+  if (!review) {
+    throw new Error('Review not found');
+  }
+
+  // Only owner can update
+  if (review.user.toString() !== userId.toString()) {
+    throw new Error('Not authorized to update this review');
+  }
+
+  // Update fields
+  if (data.rating !== undefined) review.rating = data.rating;
+  if (data.comment !== undefined) review.comment = data.comment;
+
+  await review.save();
+
+  // ⭐ update product rating again
+  await updateProductRating(review.product);
+
+  return review;
+};
+
+
+exports.deleteReview = async (reviewId, userId) => {
+  const review = await Review.findById(reviewId);
+
+  if (!review) {
+    throw new Error('Review not found');
+  }
+
+  // only owner can delete
+  if (review.user.toString() !== userId.toString()) {
+    throw new Error('Not authorized to delete this review');
+  }
+
+  await Review.findByIdAndDelete(reviewId);
+
+  // update product rating after delete
+  await updateProductRating(review.product);
+};

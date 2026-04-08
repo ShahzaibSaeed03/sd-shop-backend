@@ -6,15 +6,13 @@ const client = new MercadoPagoConfig({
 
 const paymentClient = new Payment(client);
 
-exports.createPayment = async ({ amount, email, token, method }) => {
+exports.createPayment = async ({ amount, email, method }) => {
   const payment = await paymentClient.create({
     body: {
       transaction_amount: Number(amount),
       description: 'Game Pack Purchase',
 
-      payment_method_id: method, // ✅ dynamic (visa, master, etc)
-      token: token,              // ✅ REQUIRED
-      installments: 1,
+      payment_method_id: method, // pix
 
       payer: {
         email

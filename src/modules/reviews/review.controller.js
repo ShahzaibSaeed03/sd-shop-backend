@@ -18,3 +18,29 @@ exports.getByProduct = async (req, res, next) => {
   }
 };
 
+exports.update = async (req, res, next) => {
+  try {
+    const review = await service.updateReview(
+      req.params.id,
+      req.user._id,
+      req.body
+    );
+
+    res.json(review);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    await service.deleteReview(req.params.id, req.user._id);
+
+    res.json({
+      message: 'Review deleted successfully'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

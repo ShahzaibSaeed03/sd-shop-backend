@@ -111,4 +111,67 @@ router.post('/', protect, controller.create);
  */
 router.get('/product/:productId', controller.getByProduct);
 
+/**
+ * @swagger
+ * /api/reviews/{id}:
+ *   put:
+ *     summary: Update review (only owner)
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: 64f123abc123xyz456
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               rating:
+ *                 type: number
+ *                 example: 4
+ *               comment:
+ *                 type: string
+ *                 example: Updated review comment
+ *     responses:
+ *       200:
+ *         description: Review updated successfully
+ *       403:
+ *         description: Not allowed (not review owner)
+ *       404:
+ *         description: Review not found
+ */
+router.put('/:id', protect, controller.update);
+
+/**
+ * @swagger
+ * /api/reviews/{id}:
+ *   delete:
+ *     summary: Delete review (only owner)
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: 64f123abc123xyz456
+ *     responses:
+ *       200:
+ *         description: Review deleted successfully
+ *       403:
+ *         description: Not authorized
+ *       404:
+ *         description: Review not found
+ */
+router.delete('/:id', protect, controller.remove);
+
 module.exports = router;
