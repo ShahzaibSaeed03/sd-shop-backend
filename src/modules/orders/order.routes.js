@@ -3,10 +3,114 @@ const controller = require('./order.controller');
 
 const { protect } = require('../auth/auth.middleware');
 
-// Buy Now
+/**
+ * @swagger
+ * tags:
+ *   name: Orders
+ *   description: Order and purchase APIs
+ */
+
+/**
+ * @swagger
+ * /api/orders:
+ *   post:
+ *     summary: Create order (Buy Now)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productId
+ *             properties:
+ *               productId:
+ *                 type: string
+ *                 example: 64f123abc123xyz456
+ *               code:
+ *                 type: string
+ *                 example: DISCOUNT10
+ *     responses:
+ *       201:
+ *         description: Order created with payment details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 order:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     product:
+ *                       type: string
+ *                     price:
+ *                       type: number
+ *                     originalPrice:
+ *                       type: number
+ *                     discount:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                       example: pending
+ *                 payment:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     qr_code:
+ *                       type: string
+ *                     qr_code_base64:
+ *                       type: string
+ *                     copy_paste:
+ *                       type: string
+ *       401:
+ *         description: Unauthorized
+ */
 router.post('/', protect, controller.create);
 
-// My Orders
+/**
+ * @swagger
+ * /api/orders/my:
+ *   get:
+ *     summary: Get logged-in user orders
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   price:
+ *                     type: number
+ *                   originalPrice:
+ *                     type: number
+ *                   discount:
+ *                     type: number
+ *                   status:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                   product:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       price:
+ *                         type: number
+ */
 router.get('/my', protect, controller.getMyOrders);
 
 module.exports = router;

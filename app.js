@@ -2,12 +2,24 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./src/config/swagger');
 
 const app = express();
 
+/**
+ * 🔥 IMPORTANT: Webhook must come BEFORE express.json()
+ * Otherwise body will be parsed incorrectly
+ */
+app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
+
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:4200',
+  credentials: true
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
 // Static (Landing page)
@@ -24,14 +36,17 @@ app.use('/api/banners', require('./src/modules/banner/banner.routes'));
 app.use('/api/influencers', require('./src/modules/influencer/influencer.routes'));
 app.use('/api/payments', require('./src/modules/payments/payment.routes'));
 
-// 404 handler (important)
+// Swagger Docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     message: 'Route not found'
   });
 });
 
-// Error handler (LAST)
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err);
 
