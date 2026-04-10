@@ -4,7 +4,7 @@ const morgan = require('morgan');
 const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./src/config/swagger');
-
+const supplierRoutes = require('./src/modules/supplier/supplier.routes');
 const app = express();
 
 /**
@@ -35,7 +35,9 @@ app.use('/api/admin', require('./src/modules/admin/admin.routes'));
 app.use('/api/banners', require('./src/modules/banner/banner.routes'));
 app.use('/api/influencers', require('./src/modules/influencer/influencer.routes'));
 app.use('/api/payments', require('./src/modules/payments/payment.routes'));
+app.use('/api/users', require('./src/modules/users/user.routes'));
 
+app.use('/api/supplier', supplierRoutes);
 // Swagger Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

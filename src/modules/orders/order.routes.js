@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const controller = require('./order.controller');
 
-const { protect } = require('../auth/auth.middleware');
+const { protect, isAdmin } = require('../auth/auth.middleware');
 
 /**
  * @swagger
@@ -113,4 +113,25 @@ router.post('/', protect, controller.create);
  */
 router.get('/my', protect, controller.getMyOrders);
 
+/**
+ * @swagger
+ * /api/orders:
+ *   get:
+ *     summary: Get all orders (Admin)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/', protect, isAdmin, controller.getAllOrders);
+
+/**
+ * @swagger
+ * /api/orders/{id}/status:
+ *   patch:
+ *     summary: Update order status (Admin)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch('/:id/status', protect, isAdmin, controller.updateStatus);
 module.exports = router;

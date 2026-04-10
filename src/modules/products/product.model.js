@@ -25,14 +25,17 @@ const productSchema = new mongoose.Schema({
     default: true
   },
   avgRating: {
-  type: Number,
-  default: 0
-},
-reviewCount: {
-  type: Number,
-  default: 0
-}
-
+    type: Number,
+    default: 0
+  },
+  reviewCount: {
+    type: Number,
+    default: 0
+  },
+  supplierId: {
+    type: String
+  },
+  supplierId: String // product_code from lapakgaming
 }, { timestamps: true });
 
 // 🔍 Text index for search (IMPORTANT)

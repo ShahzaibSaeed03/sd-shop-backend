@@ -1,52 +1,28 @@
-const service = require('./payment.service');
-const mercadopago = require('mercadopago');
-const Order = require('../orders/order.model');
+const paymentService = require('./payment.service');
 
-exports.webhook = async (req, res) => {
-  try {
-    const { type, data } = req.body;
-
-    // 🔥 Only handle payment events
-    if (type === 'payment') {
-      const paymentId = data.id;
-
-      // 🔥 Get payment details from MP
-      const payment = await mercadopago.payment.findById(paymentId);
-
-      if (payment.body.status === 'approved') {
-
-        // 👉 You must link payment → order
-        const order = await Order.findOne({
-          paymentId: paymentId
-        });
-
-        if (order) {
-          order.status = 'paid';
-          await order.save();
-        }
-      }
-    }
-
-    res.sendStatus(200);
-
-  } catch (err) {
-    console.log('WEBHOOK ERROR:', err);
-    res.sendStatus(500);
-  }
-};
+// ✅ CREATE PAYMENT (used internally or debug only)
 exports.create = async (req, res, next) => {
   try {
-    const payment = await service.createPayment({
+    const result = await paymentService.createPayment({
       amount: req.body.amount,
-      email: req.user.email,
-      token: req.body.token,   // ✅ ADD THIS
-      method: req.body.method  // ✅ ADD THIS
+      email: req.user.email // always use auth user
     });
 
-    res.json(payment);
+    res.status(200).json(result);
 
   } catch (err) {
-    console.log('MP ERROR:', err);
-    res.status(400).json(err);
+    console.log('❌ CREATE ERROR:', err.message);
+    next(err);
+  }
+};
+
+// ✅ WEBHOOK (MAIN LOGIC ENTRY)
+exports.webhook = async (req, res, next) => {
+  try {
+    await paymentService.handleWebhook(req.body);
+    res.sendStatus(200);
+  } catch (err) {
+    console.log('❌ WEBHOOK ERROR:', err.message);
+    res.sendStatus(500);
   }
 };

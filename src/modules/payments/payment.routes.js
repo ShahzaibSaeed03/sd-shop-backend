@@ -57,7 +57,7 @@ const { protect } = require('../auth/auth.middleware');
  *       401:
  *         description: Unauthorized
  */
-router.post('/', protect, controller.create);
+router.post('/create', protect, controller.create);
 
 /**
  * @swagger

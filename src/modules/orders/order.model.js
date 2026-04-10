@@ -18,17 +18,35 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
 
+  originalPrice: Number,
+  discount: Number,
+
+  influencer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Influencer'
+  },
+
+  paymentId: String,
+
   status: {
     type: String,
-    enum: ['pending', 'paid'],
-    default: 'paid' // simple flow
-  },
-paymentId: String,
-status: {
+    enum: ['pending', 'paid', 'cancelled', 'refunded'],
+    default: 'pending'
+  }
+,
+supplierResponse: {
+  type: Object
+},
+
+userGameId: String,
+serverId: String,
+supplierResponse: Object,
+supplierStatus: {
   type: String,
-  enum: ['pending', 'paid'],
+  enum: ['pending', 'processing', 'completed', 'failed'],
   default: 'pending'
-}
+},
+supplierResponse: Object
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);
