@@ -5,151 +5,31 @@ const upload = require('../../middlewares/upload.middleware');
 const { protect, isAdmin } = require('../auth/auth.middleware');
 
 /**
- * @swagger
- * tags:
- *   name: Products
- *   description: Product management APIs
+ * ===============================
+ * PUBLIC / PROTECTED ROUTES
+ * ===============================
  */
+router.get('/search', protect, controller.searchGames);
+
+// 🔐 Get all products (role-based: admin sees all, user sees only active)
+router.get('/', protect, controller.getAll);
+
+// 🔐 Special sections (role-based filtering handled in service)
+router.get('/popular', protect, controller.getPopular);
+router.get('/coins', protect, controller.getCoins);
+router.get('/hot', protect, controller.getHot);
+
+// 🔐 Get single product (hide inactive for normal users)
+router.get('/:id', protect, controller.getOne);
+
 
 /**
- * @swagger
- * /api/products:
- *   get:
- *     summary: Get all products (with filters, search, pagination)
- *     tags: [Products]
- *     security: []
- *     parameters:
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         example: shoes
- *       - in: query
- *         name: minPrice
- *         schema:
- *           type: number
- *         example: 100
- *       - in: query
- *         name: maxPrice
- *         schema:
- *           type: number
- *         example: 1000
- *       - in: query
- *         name: page
- *         schema:
- *           type: number
- *         example: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: number
- *         example: 10
- *     responses:
- *       200:
- *         description: Products fetched
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 total:
- *                   type: number
- *                   example: 50
- *                 page:
- *                   type: number
- *                   example: 1
- *                 limit:
- *                   type: number
- *                   example: 10
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id:
- *                         type: string
- *                       name:
- *                         type: string
- *                       price:
- *                         type: number
- *                       image:
- *                         type: string
- *                         example: https://your-bucket.s3.amazonaws.com/products/image.jpg
+ * ===============================
+ * ADMIN ROUTES
+ * ===============================
  */
-router.get('/', controller.getAll);
 
-/**
- * @swagger
- * /api/products/{id}:
- *   get:
- *     summary: Get single product
- *     tags: [Products]
- *     security: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         example: 64f123abc123xyz456
- *     responses:
- *       200:
- *         description: Product fetched
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id:
- *                   type: string
- *                 name:
- *                   type: string
- *                 price:
- *                   type: number
- *                 description:
- *                   type: string
- *                 image:
- *                   type: string
- *       404:
- *         description: Product not found
- */
-router.get('/:id', controller.getOne);
-
-/**
- * @swagger
- * /api/products:
- *   post:
- *     summary: Create product (Admin, upload to S3)
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: false
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: Nike Shoes
- *               price:
- *                 type: number
- *                 example: 1200
- *               description:
- *                 type: string
- *                 example: High quality shoes
- *               image:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Product created
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- */
+// ✅ Create product (with image upload)
 router.post(
   '/',
   protect,
@@ -158,65 +38,26 @@ router.post(
   controller.create
 );
 
-/**
- * @swagger
- * /api/products/{id}:
- *   put:
- *     summary: Update product (Admin)
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               price:
- *                 type: number
- *               description:
- *                 type: string
- *     responses:
- *       200:
- *         description: Product updated
- */
-router.put('/:id', protect, isAdmin, controller.update);
+// ✅ Update product (includes toggle isActive)
+router.put(
+  '/:id',
+  protect,
+  isAdmin,
+  upload.single('image'), // ✅ ADD THIS
+  controller.update
+);
 
-/**
- * @swagger
- * /api/products/{id}:
- *   delete:
- *     summary: Delete product (Admin)
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Product deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Product deleted
- */
-router.delete('/:id', protect, isAdmin, controller.remove);
-
+// ✅ Delete product
+router.delete(
+  '/:id',
+  protect,
+  isAdmin,
+  controller.remove
+);
+router.put('/bulk-markup', protect, isAdmin, controller.bulkUpdateMarkup);
+router.get(
+  '/category/:categoryId',
+  protect,
+  controller.getByCategory
+);
 module.exports = router;

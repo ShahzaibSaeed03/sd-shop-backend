@@ -1,19 +1,34 @@
 const mongoose = require('mongoose');
 
 const bannerSchema = new mongoose.Schema({
-  title: String,
 
-  image: {
+  title: {
+    type: String,
+    trim: true
+  },
+
+  desktopImage: {
     type: String,
     required: true
   },
 
+  mobileImage: {
+    type: String
+  },
+
   link: String,
 
-  type: {
+  section: {
     type: String,
-    enum: ['home', 'promo', 'featured'],
-    default: 'home'
+    enum: ['top_games', 'hot_selling', 'featured', 'new_releases'],
+    required: true
+  },
+
+  slug: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true
   },
 
   isActive: {

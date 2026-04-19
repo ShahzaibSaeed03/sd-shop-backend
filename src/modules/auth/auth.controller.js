@@ -1,5 +1,8 @@
 const authService = require('./auth.service');
 const User = require('./auth.model');
+const { OAuth2Client } = require('google-auth-library');
+const jwt = require('jsonwebtoken'); // 🔥 also missing in your code
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // register
 exports.register = async (req, res, next) => {
@@ -15,9 +18,11 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const data = await authService.login(req.body);
-    res.json(data);
+    res.status(200).json(data);
   } catch (err) {
-    next(err);
+    res.status(401).json({
+      message: err.message || "Invalid credentials"
+    });
   }
 };
 
@@ -32,6 +37,54 @@ exports.makeAdmin = async (req, res, next) => {
 
     res.json(user);
   } catch (err) {
+    next(err);
+  }
+};
+
+exports.googleLogin = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Token required' });
+    }
+
+    // ✅ VERIFY GOOGLE TOKEN
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+
+    const { sub, email, name } = payload;
+
+    let user = await User.findOne({ email });
+
+    // ✅ CREATE USER IF NOT EXISTS
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        googleId: sub,
+        provider: 'google'
+      });
+    }
+
+    // ✅ GENERATE TOKEN (SAME AS LOGIN)
+    const jwtToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token: jwtToken,
+      user
+    });
+
+  } catch (err) {
+    console.log('❌ GOOGLE LOGIN ERROR:', err.message);
     next(err);
   }
 };

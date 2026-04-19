@@ -31,19 +31,27 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     });
 
     // ✅ Create order
-const order = await Order.create({
-  user: userId,
-  product: productId,
-  price: finalPrice,
-  paymentId: payment.id,
+    const order = await Order.create({
+      user: userId,
+      product: productId,
+      price: finalPrice,
+      paymentId: payment.id,
 
-  userGameId: gameData.gameId,
-  serverId: gameData.serverId,
+      userGameId: gameData.gameId,
+      serverId: gameData.serverId,
 
-  status: 'pending',
-  supplierStatus: 'pending'
-});
+      status: 'pending',
+      supplierStatus: 'pending'
+    });
+    // ✅ AFTER ORDER CREATED (CORRECT PLACE)
+    if (code) {
+      const Coupon = require('../coupon/coupon.model');
 
+      await Coupon.updateOne(
+        { code },
+        { $inc: { usedCount: 1 } }
+      );
+    }
     // ✅ Create invoice
     await invoiceService.createInvoice(order);
 
@@ -71,7 +79,8 @@ const order = await Order.create({
 };
 
 // ✅ USER ORDERS
-exports.getUserOrders = async (userId) => {0
+exports.getUserOrders = async (userId) => {
+  0
   try {
     return await Order.find({ user: userId })
       .populate('product')
@@ -83,20 +92,46 @@ exports.getUserOrders = async (userId) => {0
 
 // ✅ ADMIN: ALL ORDERS
 exports.getAllOrders = async (query) => {
-  try {
-    const filter = {};
+  const page = parseInt(query.page) || 1;
+  const limit = parseInt(query.limit) || 10;
+  const skip = (page - 1) * limit;
 
-    if (query.status) {
-      filter.status = query.status;
-    }
+  const filter = {};
 
-    return await Order.find(filter)
-      .populate('user', 'name email')
-      .populate('product', 'name price')
-      .sort({ createdAt: -1 });
-  } catch (err) {
-    throw err;
+  if (query.status && query.status !== 'all') {
+    filter.status = query.status;
   }
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate('user', 'name email')
+      .populate('product', 'name price image')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+
+    Order.countDocuments(filter)
+  ]);
+
+  return {
+    success: true,
+    data: orders.map(o => ({
+      id: o._id,
+      orderId: `#${o._id.toString().slice(-4)}`,
+      date: o.createdAt,
+      status: o.status,
+      total: o.price,
+
+      // ✅ FIX HERE
+      productName: o.product?.name || 'Unknown Product',
+      image: o.product?.image || '',
+
+      user: o.user?.email
+    })),
+    total,
+    page,
+    pages: Math.ceil(total / limit)
+  };
 };
 
 // ✅ ADMIN: UPDATE STATUS
@@ -112,4 +147,32 @@ exports.updateOrderStatus = async (orderId, status) => {
   } catch (err) {
     throw err;
   }
+};
+
+// ✅ RECENT PURCHASES (GLOBAL / PUBLIC)
+// ✅ RECENT PRODUCT PURCHASES (clean response)
+exports.getRecentPurchases = async (limit = 10) => {
+  const orders = await Order.find({ status: 'paid' })
+    .populate('product')
+    .sort({ createdAt: -1 })
+    .limit(limit);
+
+  // 👉 return only product data
+  return orders.map(o => ({
+    _id: o.product?._id,
+    name: o.product?.name,
+    image: o.product?.image,
+    price: o.product?.price,
+    createdAt: o.createdAt
+  }));
+};
+
+exports.getOrderById = async (orderId) => {
+  const order = await Order.findById(orderId)
+    .populate('user', 'name email')
+    .populate('product');
+
+  if (!order) throw new Error('Order not found');
+
+  return order;
 };

@@ -11,15 +11,20 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true
   },
-  password: {
-    type: String,
-    required: true
-  },
+password: {
+  type: String,
+  required: false // ✅ FIX
+},
+googleId: String,
+provider: {
+  type: String,
+  default: 'local'
+},
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
-  }
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

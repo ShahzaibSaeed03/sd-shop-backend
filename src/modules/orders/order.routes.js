@@ -134,4 +134,18 @@ router.get('/', protect, isAdmin, controller.getAllOrders);
  *       - bearerAuth: []
  */
 router.patch('/:id/status', protect, isAdmin, controller.updateStatus);
+
+
+/**
+ * @swagger
+ * /api/orders/recent:
+ *   get:
+ *     summary: Get recent purchases (public)
+ *     tags: [Orders]
+ */
+router.get('/recent', controller.getRecentPurchases);
+
+router.get('/:id', protect, isAdmin, controller.getOne);
+// ✅ HOME SECTIONS
+router.post('/:id/retry', protect, isAdmin, controller.retry);
 module.exports = router;

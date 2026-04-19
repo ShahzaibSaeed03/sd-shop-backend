@@ -143,4 +143,8 @@ router.post('/login', controller.login);
  */
 router.patch('/make-admin/:id', protect, isAdmin, controller.makeAdmin);
 
+
+router.post('/google', controller.googleLogin);
+
 module.exports = router;
+

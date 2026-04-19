@@ -28,11 +28,11 @@ const orderSchema = new mongoose.Schema({
 
   paymentId: String,
 
-  status: {
-    type: String,
-    enum: ['pending', 'paid', 'cancelled', 'refunded'],
-    default: 'pending'
-  }
+status: {
+  type: String,
+  enum: ['pending', 'paid', 'failed', 'cancelled', 'refunded'],
+  default: 'pending'
+}
 ,
 supplierResponse: {
   type: Object

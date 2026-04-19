@@ -1,9 +1,22 @@
+// supplier.routes.js
 const router = require('express').Router();
 const controller = require('./supplier.controller');
-// 🔥 create supplier order (optional API)
-router.post('/create-order', controller.createOrder);
+const { protect, isAdmin } = require('../auth/auth.middleware');
 
-// 🔥 webhook
+router.get('/sync-products', protect, isAdmin, controller.syncProducts);
 router.post('/webhook', controller.webhook);
+// supplier.routes.js
 
+router.get(
+  '/categories',
+  protect,
+  isAdmin,
+  controller.getCategories
+);
+router.get(
+  '/sync-categories',
+  protect,
+  isAdmin,
+  controller.syncCategories
+);
 module.exports = router;

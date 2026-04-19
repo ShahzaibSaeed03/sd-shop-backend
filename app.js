@@ -36,7 +36,9 @@ app.use('/api/banners', require('./src/modules/banner/banner.routes'));
 app.use('/api/influencers', require('./src/modules/influencer/influencer.routes'));
 app.use('/api/payments', require('./src/modules/payments/payment.routes'));
 app.use('/api/users', require('./src/modules/users/user.routes'));
-
+app.use('/api/sections', require('./src/modules/section/section.routes'));
+app.use('/api/coupons', require('./src/modules/coupon/coupon.routes'));
+app.use('/api/categories', require('./src/modules/categorey/category.routes'));
 app.use('/api/supplier', supplierRoutes);
 // Swagger Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

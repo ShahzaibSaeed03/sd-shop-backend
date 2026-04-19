@@ -1,44 +1,50 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: String,
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
 
-  price: {
-    type: Number,
-    required: true
-  },
-
+  // ✅ RELATION
   category: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
     index: true
   },
+  displayName: {
+    type: String,
+    default: ''
+  },
+  // ✅ optional fast access
+  categoryName: { type: String, index: true },
+
+  supplierCategory: String, // category_code
+  supplierId: { type: String, index: true },
 
   image: String,
 
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  avgRating: {
+  requiresUserId: { type: Boolean, default: true },
+  requiresServer: { type: Boolean, default: false },
+  requiresZone: { type: Boolean, default: false },
+  requiresNickname: { type: Boolean, default: false },
+
+  isActive: { type: Boolean, default: true },
+
+  markup: {
     type: Number,
-    default: 0
-  },
-  reviewCount: {
-    type: Number,
-    default: 0
-  },
-  supplierId: {
-    type: String
-  },
-  supplierId: String // product_code from lapakgaming
+    default: 0,
+    min: 0,
+    max: 500
+  }
+
 }, { timestamps: true });
 
-// 🔍 Text index for search (IMPORTANT)
-productSchema.index({ name: 'text', description: 'text' });
+productSchema.virtual('finalPrice').get(function () {
+  return this.price + (this.price * this.markup / 100);
+});
+
+productSchema.set('toJSON', { virtuals: true });
+productSchema.set('toObject', { virtuals: true });
+
+productSchema.index({ name: 'text' });
 
 module.exports = mongoose.model('Product', productSchema);
