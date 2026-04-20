@@ -5,7 +5,7 @@ const upload = require('../../middlewares/upload.middleware');
 const { protect, isAdmin } = require('../auth/auth.middleware');
 
 
-router.get('/', protect, controller.getAll);
+router.get('/', controller.getAll);
 
 router.post(
   '/',
