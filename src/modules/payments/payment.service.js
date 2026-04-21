@@ -13,17 +13,28 @@ const paymentClient = new Payment(client);
 // ==========================
 // ✅ CREATE PAYMENT
 // ==========================
-exports.createPayment = async ({ amount, email }) => {
+exports.createPayment = async ({ amount, email, method, token }) => {
 
-  const payment = await paymentClient.create({
-    body: {
-      transaction_amount: Number(amount),
-      description: 'Game Pack Purchase',
-      payment_method_id: 'pix',
-      payer: { email },
-      notification_url: process.env.WEBHOOK_URL
-    }
-  });
+  const body = {
+    transaction_amount: Number(amount),
+    description: 'Game Pack Purchase',
+    payer: { email },
+    notification_url: process.env.WEBHOOK_URL
+  };
+
+  // ✅ PIX
+  if (method === 'pix') {
+    body.payment_method_id = 'pix';
+  }
+
+  // ✅ CARD
+  if (method === 'card') {
+    body.payment_method_id = 'visa'; // or dynamic
+    body.token = token; // 🔥 from frontend
+    body.installments = 1;
+  }
+
+  const payment = await paymentClient.create({ body });
 
   return payment;
 };
@@ -31,67 +42,53 @@ exports.createPayment = async ({ amount, email }) => {
 // ==========================
 // ✅ HANDLE WEBHOOK
 // ==========================
-exports.handleWebhook = async (body) => {
-
-  console.log('📥 Webhook Body:', JSON.stringify(body));
-
-  if (!body?.data?.id) {
-    console.log('⏭️ Invalid webhook');
-    return;
+exports.getPayment = async (paymentId) => {
+  try {
+    const res = await paymentClient.get({ id: paymentId });
+    return res;
+  } catch (err) {
+    console.log('❌ GET PAYMENT ERROR:', err.message);
+    return null;
   }
+};
+exports.handleWebhook = async (payload) => {
+  try {
 
-  const paymentId = body.data.id;
+    // ✅ SAVE LOG
+    await WebhookLog.create({ payload });
 
-  // 🔥 Fetch real payment
-  const payment = await paymentClient.get({ id: paymentId });
+    const paymentId = payload?.data?.id || payload?.id;
+    if (!paymentId) return;
 
-  console.log('💰 MP Payment:', payment);
+    const payment = await exports.getPayment(paymentId);
+    if (!payment) return;
 
-  const status = payment.status;
+    const order = await Order.findOne({ paymentId: payment.id });
+    if (!order) return;
 
-  const order = await Order.findOne({ paymentId });
+    // ✅ ONLY APPROVED
+    if (payment.status !== 'approved') return;
 
-  if (!order) {
-    console.log('❌ Order not found for paymentId:', paymentId);
-    return;
-  }
+    // avoid duplicate
+    if (order.status === 'paid') return;
 
-  console.log('📦 Order Found:', order._id);
+    const product = await Product.findById(order.product);
 
-  // ==========================
-  // ✅ APPROVED
-  // ==========================
-  if (status === 'approved') {
+    // 🔥 CALL LAPAK
+    const supplierRes = await supplierService.createOrder(order, product);
 
-    if (order.status !== 'paid') {
+    // ✅ UPDATE ORDER
+    order.status = 'paid';
+    order.supplierStatus = 'processing';
+    order.supplierTid = supplierRes.tid; // ✅ FIXED NAME
+    order.supplierResponse = supplierRes;
 
-      order.status = 'paid';
-
-      const product = await Product.findById(order.product);
-
-      try {
-        const supplierRes = await supplierService.createSupplierOrder(order, product);
-
-        order.supplierResponse = supplierRes;
-        order.supplierStatus = 'processing';
-
-      } catch (err) {
-        console.log('❌ Supplier failed:', err.message);
-        order.supplierStatus = 'failed';
-      }
-
-      await order.save();
-
-      console.log('✅ ORDER PAID & SUPPLIER CALLED');
-    }
-  }
-
-  // ==========================
-  // ❌ FAILED
-  // ==========================
-  if (['rejected', 'cancelled'].includes(status)) {
-    order.status = 'failed';
     await order.save();
+
+    console.log('✅ PAYMENT SUCCESS → LAPAK CALLED');
+
+  } catch (err) {
+    console.log('❌ HANDLE WEBHOOK ERROR:', err.message);
   }
 };
 exports.getLogs = async (query) => {

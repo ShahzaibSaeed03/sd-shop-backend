@@ -35,7 +35,24 @@ exports.getAllOrders = async (req, res, next) => {
     next(err);
   }
 };
+// ==========================
+// ✅ CALCULATE PRICE
+// ==========================
+exports.calculatePrice = async (req, res, next) => {
+  try {
 
+    const result = await service.calculatePrice(
+      req.body.productId,
+      req.body.code,
+      req.body.method
+    );
+
+    res.json(result);
+
+  } catch (err) {
+    next(err);
+  }
+};
 // ✅ ADMIN UPDATE STATUS
 exports.updateStatus = async (req, res, next) => {
   try {

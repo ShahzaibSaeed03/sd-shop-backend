@@ -144,7 +144,7 @@ router.patch('/:id/status', protect, isAdmin, controller.updateStatus);
  *     tags: [Orders]
  */
 router.get('/recent', controller.getRecentPurchases);
-
+router.post('/calculate', protect, controller.calculatePrice);
 router.get('/:id', protect, isAdmin, controller.getOne);
 // ✅ HOME SECTIONS
 router.post('/:id/retry', protect, isAdmin, controller.retry);

@@ -360,7 +360,7 @@ exports.fetchCategories = async () => {
     const res = await api.get('/api/category', {
       headers: getAuthHeaders(),
       params: {
-        country_code: 'id'
+        country_code: 'br'
       }
     });
 
@@ -435,7 +435,7 @@ exports.fetchProducts = async () => {
     const res = await api.get('/api/all-products', {
       headers: getAuthHeaders(),
       params: {
-        country_code: 'id'
+        country_code: 'br'
       }
     });
 
@@ -462,34 +462,34 @@ exports.syncProducts = async () => {
       categoryMap[c.code] = c;
     });
 
-  const ops = products.map(p => {
+    const ops = products.map(p => {
 
-  const category =
-    categoryMap[p.category_code] ||
-    Object.values(categoryMap).find(
-      c => c.code.toLowerCase() === String(p.category_code).toLowerCase()
-    );
+      const category =
+        categoryMap[p.category_code] ||
+        Object.values(categoryMap).find(
+          c => c.code.toLowerCase() === String(p.category_code).toLowerCase()
+        );
 
-  return {
-    updateOne: {
-      filter: { supplierId: p.code },
-      update: {
-        name: p.name,
-        price: Math.ceil(p.price * 1.15),
+      return {
+        updateOne: {
+          filter: { supplierId: p.code },
+          update: {
+            name: p.name,
+            price: Math.ceil(p.price * 1.15),
 
-        category: category ? category._id : null, // ✅ FIX
-        categoryName: category ? category.name : p.category_name || 'Other',
+            category: category ? category._id : null, // ✅ FIX
+            categoryName: category ? category.name : p.category_name || 'Other',
 
-        supplierCategory: p.category_code,
-        supplierId: p.code,
+            supplierCategory: p.category_code,
+            supplierId: p.code,
 
-        image: p.image || '',
-        isActive: p.status === 'available'
-      },
-      upsert: true
-    }
-  };
-});
+            image: p.image || '',
+            isActive: p.status === 'available'
+          },
+          upsert: true
+        }
+      };
+    });
 
     await Product.bulkWrite(ops);
 
@@ -505,14 +505,13 @@ exports.syncProducts = async () => {
 exports.createOrder = async (order, product) => {
   try {
     const payload = {
+      user_id: order.userGameId || undefined,
+      additional_id: order.serverId || undefined,
+      additional_information: order.nickname || undefined,
+      count_order: 1,
       product_code: product.supplierId,
-      user_id: order.userGameId,
-      server_id: order.serverId || undefined,
-      zone_id: order.zoneId || undefined,
-      nickname: order.nickname || undefined,
-      reference_id: order._id.toString(),
-      end_user_ip_address: order.userIpAddress || '1.1.1.1',
-      notification_url: `${process.env.BASE_URL}/api/supplier/webhook`
+      partner_reference_id: order._id.toString(),
+      end_user_ip_address: order.userIpAddress || '1.1.1.1'
     };
 
     const res = await api.post('/api/order', payload, {
@@ -526,7 +525,16 @@ exports.createOrder = async (order, product) => {
       throw new Error(res.data.message || 'Order failed');
     }
 
-    return res.data;
+    const supplierData = res.data.data;
+
+    // ✅ SAVE IMPORTANT DATA
+    order.supplierOrderId = supplierData.tid; // 🔥 VERY IMPORTANT
+    order.supplierStatus = 'processing';
+    order.supplierResponse = res.data;
+
+    await order.save();
+
+    return supplierData;
 
   } catch (error) {
     console.error('❌ Create Order Error:', error.response?.data || error.message);
@@ -555,7 +563,7 @@ exports.webhook = async (req, res) => {
       order.status = 'paid';
       order.supplierStatus = 'completed';
     } else if (['FAILED', 'REFUNDED'].includes(status)) {
-      order.status = 'cancelled';
+      order.status = 'failed';
       order.supplierStatus = 'failed';
     } else {
       order.supplierStatus = 'processing';

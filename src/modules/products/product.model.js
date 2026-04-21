@@ -28,7 +28,10 @@ const productSchema = new mongoose.Schema({
   requiresNickname: { type: Boolean, default: false },
 
   isActive: { type: Boolean, default: true },
-
+featured: {
+  type: Boolean,
+  default: false
+},
   markup: {
     type: Number,
     default: 0,

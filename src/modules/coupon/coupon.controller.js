@@ -1,11 +1,15 @@
 const service = require('./coupon.service');
 const s3 = require('../../config/s3');
 
-exports.applyCoupon = async (req, res, next) => {
+exports.applyCoupon = async (req, res) => {
   try {
+    console.log('BODY:', req.body); // 🔥 ADD
+
     const result = await service.applyCoupon(req.body);
+
     res.json(result);
   } catch (err) {
+    console.log('COUPON ERROR:', err.message); // 🔥 ADD
     res.status(400).json({ message: err.message });
   }
 };

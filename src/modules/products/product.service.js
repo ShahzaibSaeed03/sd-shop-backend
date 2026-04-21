@@ -33,20 +33,23 @@ exports.getProducts = async (query, user) => {
   };
 };
 
-// ✅ GET ONE
 exports.getProductById = async (id, user) => {
+
   const product = await Product.findById(id)
     .populate('category');
 
-  if (!product) throw new Error('Product not found');
-
-  // ❌ hide if category inactive
-  if (
-    user?.role !== 'admin' &&
-    (!product.isActive || !product.category?.isActive)
-  ) {
-    throw new Error('Product not found');
+  // ✅ NOT FOUND
+  if (!product) {
+    return null;
   }
+
+  // ✅ ONLY CHECK PRODUCT ACTIVE
+  if (user?.role !== 'admin' && !product.isActive) {
+    return null;
+  }
+
+  // ❌ REMOVE THIS (important)
+  // product.category?.isActive check ❌
 
   return product;
 };

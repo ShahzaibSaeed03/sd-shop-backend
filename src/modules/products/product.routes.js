@@ -12,7 +12,7 @@ const { protect, isAdmin } = require('../auth/auth.middleware');
 router.get('/search', protect, controller.searchGames);
 
 // 🔐 Get all products (role-based: admin sees all, user sees only active)
-router.get('/', protect, controller.getAll);
+router.get('/', controller.getAll);
 
 // 🔐 Special sections (role-based filtering handled in service)
 router.get('/popular', protect, controller.getPopular);
@@ -20,7 +20,7 @@ router.get('/coins', protect, controller.getCoins);
 router.get('/hot', protect, controller.getHot);
 
 // 🔐 Get single product (hide inactive for normal users)
-router.get('/:id', protect, controller.getOne);
+router.get('/:id', controller.getOne);
 
 
 /**
@@ -57,7 +57,7 @@ router.delete(
 router.put('/bulk-markup', protect, isAdmin, controller.bulkUpdateMarkup);
 router.get(
   '/category/:categoryId',
-  protect,
+
   controller.getByCategory
 );
 module.exports = router;

@@ -6,81 +6,109 @@ const paymentService = require('../payments/payment.service');
 const supplierService = require('../supplier/supplier.service');
 
 // ✅ CREATE ORDER
+
 exports.createOrder = async (userId, productId, code, email, gameData) => {
   try {
     const product = await Product.findById(productId);
     if (!product) throw new Error('Product not found');
 
     let finalPrice = product.price;
-    let influencer = null;
-    let discountAmount = 0;
 
-    // ✅ Apply influencer code
+    // optional: apply coupon
     if (code) {
       const result = await influencerService.applyCode(code, product.price);
       finalPrice = result.finalPrice;
-      discountAmount = result.discountAmount;
-      influencer = result.influencer._id;
     }
 
-    // ✅ Create payment (PIX / Stripe etc)
+    const paymentMethod = gameData.method || 'pix';
+
+    // fee logic
+    let feePercent = paymentMethod === 'card' ? 5.4 : 1;
+    const feeAmount = (finalPrice * feePercent) / 100;
+    const totalAmount = finalPrice + feeAmount;
+
+    // ✅ CREATE PAYMENT ONLY
     const payment = await paymentService.createPayment({
-      amount: finalPrice,
-      method: 'pix',
+      amount: totalAmount,
+      method: paymentMethod,
+      token: gameData.token,
       email
     });
+    await Order.findByIdAndUpdate(orderId, {
+      paymentId: payment.id,
+      status: 'pending_payment'
+    });
 
-    // ✅ Create order
+    // ✅ CREATE ORDER (NO LAPAK HERE)
     const order = await Order.create({
       user: userId,
       product: productId,
+
       price: finalPrice,
+      paymentFee: feeAmount,
+      totalAmount: totalAmount,
+      paymentMethod: paymentMethod,
+
       paymentId: payment.id,
 
-      userGameId: gameData.gameId,
-      serverId: gameData.serverId,
+      userGameId: gameData.user_id,
+      serverId: gameData.server_id,
+      zoneId: gameData.zone_id,
+      nickname: gameData.nickname,
 
-      status: 'pending',
+      status: 'pending_payment',   // 🔥 IMPORTANT
       supplierStatus: 'pending'
     });
-    // ✅ AFTER ORDER CREATED (CORRECT PLACE)
-    if (code) {
-      const Coupon = require('../coupon/coupon.model');
 
-      await Coupon.updateOne(
-        { code },
-        { $inc: { usedCount: 1 } }
-      );
-    }
-    // ✅ Create invoice
     await invoiceService.createInvoice(order);
 
-    // ⚠️ OPTIONAL (NOT recommended for real payment flow)
-    // Call supplier immediately (only if your business logic allows)
-    // try {
-
-    //   order.supplierResponse = supplierResponse;
-    //   order.supplierStatus = 'processing';
-
-    //   await order.save();
-    // } catch (err) {
-    //   console.log('❌ Supplier failed:', err.message);
-
-    //   order.supplierStatus = 'failed';
-    //   await order.save();
-    // }
-
-    return { order, payment };
+    return {
+      order,
+      payment
+    };
 
   } catch (err) {
     console.log('❌ CREATE ORDER ERROR:', err.message);
     throw err;
   }
 };
+// ==========================
+// ✅ CALCULATE PRICE (NEW)
+// ==========================
+exports.calculatePrice = async (productId, code, method = 'pix') => {
 
+  const product = await Product.findById(productId);
+  if (!product) {
+    console.log('❌ ProductId received:', productId);
+    throw new Error('Product not found');
+  }
+
+  let finalPrice = product.price;
+
+  // coupon / influencer
+  if (code) {
+    const result = await influencerService.applyCode(code, product.price);
+    finalPrice = result.finalPrice;
+  }
+
+  // ✅ fee logic
+  let feePercent = 0;
+
+  if (method === 'card') feePercent = 5.4;
+  if (method === 'pix') feePercent = 1;
+
+  const fee = (finalPrice * feePercent) / 100;
+  const total = finalPrice + fee;
+
+  return {
+    basePrice: finalPrice,
+    fee,
+    total,
+    method
+  };
+};
 // ✅ USER ORDERS
 exports.getUserOrders = async (userId) => {
-  0
   try {
     return await Order.find({ user: userId })
       .populate('product')

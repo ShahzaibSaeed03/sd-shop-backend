@@ -36,9 +36,16 @@ exports.getAll = async (req, res, next) => {
     next(err);
   }
 };
+
+
 exports.getOne = async (req, res, next) => {
   try {
     const product = await service.getProductById(req.params.id);
+
+    // ✅ FIX 1: handle null
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
     // 🔐 block inactive product for normal users
     if (!product.isActive && req.user?.role !== 'admin') {
@@ -46,6 +53,7 @@ exports.getOne = async (req, res, next) => {
     }
 
     res.json(product);
+
   } catch (err) {
     next(err);
   }
@@ -156,7 +164,7 @@ exports.updateMarkupBulk = async (req, res) => {
   const { markup } = req.body;
 
   await Product.updateMany(
-    { }, // all products
+    {}, // all products
     { $set: { markup } }
   );
 

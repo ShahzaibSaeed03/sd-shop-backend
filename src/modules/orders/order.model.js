@@ -28,25 +28,31 @@ const orderSchema = new mongoose.Schema({
 
   paymentId: String,
 
-status: {
-  type: String,
-  enum: ['pending', 'paid', 'failed', 'cancelled', 'refunded'],
-  default: 'pending'
-}
-,
-supplierResponse: {
-  type: Object
-},
+  // ✅ GAME DATA
+  userGameId: String,
+  serverId: String,
+  zoneId: String,
+  nickname: String,
+  paymentMethod: String,
+  paymentFee: Number,
+  totalAmount: Number,
+  // ✅ SUPPLIER
+  supplierTid: String,
+  supplierResponse: Object,
 
-userGameId: String,
-serverId: String,
-supplierResponse: Object,
-supplierStatus: {
+  supplierStatus: {
+    type: String,
+    enum: ['pending', 'processing', 'completed', 'failed'],
+    default: 'pending'
+  },
+
+  // ✅ ORDER STATUS
+ status: {
   type: String,
-  enum: ['pending', 'processing', 'completed', 'failed'],
-  default: 'pending'
-},
-supplierResponse: Object
+  enum: ['pending', 'pending_payment', 'paid', 'failed', 'cancelled', 'refunded'],
+  default: 'pending_payment'
+}
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

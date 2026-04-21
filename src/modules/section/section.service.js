@@ -1,16 +1,19 @@
 const Section = require('./section.model');
 const Product = require('../products/product.model');
 
+// ==========================
 // CREATE
+// ==========================
 exports.createSection = async (data) => {
 
   if (!data.name) throw new Error('Section name required');
 
-  // mode logic
+  // ✅ manual mode
   if (data.mode === 'manual') {
     data.apiSource = null;
   }
 
+  // ✅ api mode
   if (data.mode === 'api') {
     data.products = [];
   }
@@ -18,14 +21,18 @@ exports.createSection = async (data) => {
   return await Section.create(data);
 };
 
-// GET ALL (admin)
+// ==========================
+// GET ALL (ADMIN)
+// ==========================
 exports.getSections = async () => {
   return await Section.find()
     .populate('products', 'name image')
     .sort({ order: 1 });
 };
 
-// GET FOR FRONTEND (important)
+// ==========================
+// GET FRONTEND (IMPORTANT)
+// ==========================
 exports.getFrontendSections = async () => {
   const sections = await Section.find({ isActive: true })
     .sort({ order: 1 })
@@ -37,40 +44,56 @@ exports.getFrontendSections = async () => {
 
     let data = [];
 
-    // 🔵 MANUAL
+    // ==========================
+    // 🔵 MANUAL MODE
+    // ==========================
     if (section.mode === 'manual') {
-      data = await Product.find({
+
+      const products = await Product.find({
         _id: { $in: section.products },
         isActive: true
-      }).select('name image price');
+      })
+        .populate('category', 'name') // optional
+        .lean();
+
+      // ✅ keep order same as saved
+      data = section.products
+        .map(id => products.find(p => p._id.toString() === id.toString()))
+        .filter(Boolean);
     }
 
-    // 🟢 API MODE (REAL LOGIC)
+    // ==========================
+    // 🟢 API MODE
+    // ==========================
     if (section.mode === 'api') {
 
       switch (section.apiSource) {
 
         case 'top_games':
           data = await Product.find({ isActive: true })
-            .sort({ createdAt: -1 }) // or popularity
-            .limit(10);
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
           break;
 
         case 'hot_selling':
           data = await Product.find({ isActive: true })
-            .sort({ price: -1 }) // better: orders count
-            .limit(10);
+            .sort({ price: -1 }) // TODO: replace with orders count
+            .limit(10)
+            .lean();
           break;
 
         case 'new_releases':
           data = await Product.find({ isActive: true })
             .sort({ createdAt: -1 })
-            .limit(10);
+            .limit(10)
+            .lean();
           break;
 
         case 'featured':
           data = await Product.find({ isActive: true, featured: true })
-            .limit(10);
+            .limit(10)
+            .lean();
           break;
 
         default:
@@ -87,7 +110,9 @@ exports.getFrontendSections = async () => {
   return result;
 };
 
+// ==========================
 // UPDATE
+// ==========================
 exports.updateSection = async (id, data) => {
 
   if (data.mode === 'manual') {
@@ -101,12 +126,16 @@ exports.updateSection = async (id, data) => {
   return await Section.findByIdAndUpdate(id, data, { new: true });
 };
 
+// ==========================
 // DELETE
+// ==========================
 exports.deleteSection = async (id) => {
   return await Section.findByIdAndDelete(id);
 };
 
+// ==========================
 // REORDER
+// ==========================
 exports.reorderSections = async (items) => {
   return await Promise.all(
     items.map((item, index) =>
@@ -115,7 +144,9 @@ exports.reorderSections = async (items) => {
   );
 };
 
-// API OPTIONS (dropdown)
+// ==========================
+// OPTIONS (DROPDOWN)
+// ==========================
 exports.getOptions = () => {
   return [
     { label: 'Top Games', value: 'top_games' },
