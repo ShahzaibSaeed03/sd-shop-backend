@@ -11,8 +11,7 @@ const app = express();
  * 🔥 IMPORTANT: Webhook must come BEFORE express.json()
  * Otherwise body will be parsed incorrectly
  */
-app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
-
+app.use('/api/payments/webhook', express.json());
 // Middlewares
 app.use(cors({
   origin: 'http://localhost:4200',
@@ -58,5 +57,5 @@ app.use((err, req, res, next) => {
     message: err.message || 'Internal Server Error'
   });
 });
-
+app.set('trust proxy', true);
 module.exports = app;

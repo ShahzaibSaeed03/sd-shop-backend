@@ -45,7 +45,7 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
-
+userIpAddress: String,
   // ✅ ORDER STATUS
  status: {
   type: String,

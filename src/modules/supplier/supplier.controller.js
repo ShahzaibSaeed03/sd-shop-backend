@@ -28,7 +28,8 @@ exports.getCategories = async (req, res, next) => {
     res.json({
       success: true,
       total: formatted.length,
-      data: formatted
+      data: formatted,
+      
     });
 
   } catch (err) {

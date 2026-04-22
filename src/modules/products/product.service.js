@@ -1,4 +1,6 @@
 const Product = require('./product.model');
+const mongoose = require('mongoose');
+
 
 // ✅ CREATE
 exports.createProduct = async (data) => {
@@ -83,57 +85,47 @@ exports.deleteProduct = async (id) => {
 };
 
 exports.searchGames = async (query, user) => {
-  const match = {};
 
+  const filter = {};
+
+  // ✅ only active for normal users
   if (user?.role !== 'admin') {
-    match.isActive = true;
+    filter.isActive = true;
   }
 
   if (query) {
-    match.name = { $regex: query, $options: 'i' };
+    const orConditions = [
+      { name: { $regex: query, $options: 'i' } },         // name
+      { supplierId: { $regex: query, $options: 'i' } }    // supplierId
+    ];
+
+    // ✅ if valid Mongo ObjectId → exact match
+    if (mongoose.Types.ObjectId.isValid(query)) {
+      orConditions.push({ _id: query });
+    }
+
+    filter.$or = orConditions;
   }
 
-  const result = await Product.aggregate([
-    {
-      $match: {
-        ...(user?.role !== 'admin' && { isActive: true }),
-        ...(query && { name: { $regex: query, $options: 'i' } })
-      }
-    },
+  const products = await Product.find(filter)
+    .populate({
+      path: 'category',
+      match: { isActive: true },
+      select: 'name'
+    })
+    .select('_id name image price supplierId category')
+    .limit(20)
+    .lean();
 
-    {
-      $lookup: {
-        from: 'categories',
-        localField: 'category',
-        foreignField: '_id',
-        as: 'category'
-      }
-    },
+  const filtered = user?.role === 'admin'
+    ? products
+    : products.filter(p => p.category !== null);
 
-    { $unwind: '$category' },
-
-    {
-      $match: {
-        'category.isActive': true // ✅ FILTER HERE
-      }
-    },
-
-    {
-      $group: {
-        _id: '$category._id',
-        name: { $first: '$categoryName' },
-        image: { $first: '$image' }
-      }
-    },
-
-    { $limit: 20 }
-  ]);
   return {
     success: true,
-    data: result
+    data: filtered
   };
 };
-
 exports.getProductsByCategory = async (categoryId, user) => {
 
   const filter = {

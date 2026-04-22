@@ -387,11 +387,14 @@ exports.syncCategories = async () => {
   try {
     const categories = await exports.fetchCategories();
 
-    if (!categories.length) {
-      return { success: true, total: 0 };
-    }
+    // ✅ ONLY ALLOWED CATEGORIES
+    const allowedCodes = ['HSTR', 'GI', 'ZZZ', 'WW'];
 
-    const ops = categories.map(c => {
+    const filtered = categories.filter(c =>
+      allowedCodes.includes(c.code)
+    );
+
+    const ops = filtered.map(c => {
       const requirements = deriveRequirementsFromForms(c.forms);
 
       return {
@@ -400,17 +403,15 @@ exports.syncCategories = async () => {
           update: {
             code: c.code,
             name: c.name,
-            slug: slugify(c.name), // ✅ ADD THIS LINE
+            slug: slugify(c.name),
             game: c.name,
 
             supplierCode: c.code,
             country: c.country_code,
 
-            isActive: c.check_id === 'active',
+            isActive: true,
 
             ...requirements,
-
-            fieldLabel: c.forms?.find(f => f.name !== 'user_id')?.name || null,
 
             rawForms: c.forms || [],
             rawServers: c.servers || []
@@ -420,9 +421,17 @@ exports.syncCategories = async () => {
       };
     });
 
+    // 🧹 REMOVE OLD WRONG CATEGORIES
+    await Category.deleteMany({
+      code: { $nin: allowedCodes }
+    });
+
     await Category.bulkWrite(ops);
 
-    return { success: true, total: categories.length };
+    return {
+      success: true,
+      total: filtered.length
+    };
 
   } catch (error) {
     console.error('❌ Sync Categories Error:', error.message);
@@ -451,52 +460,152 @@ exports.fetchProducts = async () => {
 
 
 // 🔹 SYNC PRODUCTS
+const IDR_TO_BRL = 0.00029;
+
 exports.syncProducts = async () => {
   try {
     const products = await exports.fetchProducts();
 
+    const TARGET_GAMES = {
+      HSTR: {
+        name: 'Honkai Star Rail',
+        keys: {
+          express: 'HSTRESP',
+          '60': 'HSTR60',
+          '300': 'HSTR300',
+          '980': 'HSTR980',
+          '1980': 'HSTR1980',
+          '3280': 'HSTR3280',
+          '6480': 'HSTR6480'
+        }
+      },
+
+      GI: {
+        name: 'Genshin Impact',
+        keys: {
+          express: 'WELKIN',
+          '60': 'GI60',
+          '300': 'GI300',
+          '980': 'GI980',
+          '1980': 'GI1980',
+          '3280': 'GI3280',
+          '6480': 'GI6480'
+        }
+      },
+
+      ZZZ: {
+        name: 'Zenless Zone Zero',
+        keys: {
+          express: 'ZZZPASS', // or Inter-Knot Membership
+          '60': 'ZZZ60',
+          '300': 'ZZZ300',
+          '980': 'ZZZ980',
+          '1980': 'ZZZ1980',
+          '3280': 'ZZZ3280',
+          '6480': 'ZZZ6480'
+        }
+      },
+
+      // ✅ ADD THIS
+      WW: {
+        name: 'Wuthering Waves',
+        keys: {
+          express: 'WWPASS', // sometimes "lunite subscription"
+          '60': 'WW60',
+          '300': 'WW300',
+          '980': 'WW980',
+          '1980': 'WW1980',
+          '3280': 'WW3280',
+          '6480': 'WW6480'
+        }
+      }
+    };
+
     const categories = await Category.find({});
     const categoryMap = {};
-
     categories.forEach(c => {
       categoryMap[c.code] = c;
     });
 
-    const ops = products.map(p => {
+    const allFinalProducts = [];
 
-      const category =
-        categoryMap[p.category_code] ||
-        Object.values(categoryMap).find(
-          c => c.code.toLowerCase() === String(p.category_code).toLowerCase()
-        );
+    // 🔥 LOOP ALL GAMES
+    for (const [code, game] of Object.entries(TARGET_GAMES)) {
+
+      const gameProducts = products.filter(p =>
+        p.category_code === code || p.code?.startsWith(code)
+      );
+
+      const groups = {};
+
+      gameProducts.forEach(p => {
+        for (const [key, pattern] of Object.entries(game.keys)) {
+          const name = p.name?.toLowerCase() || '';
+          const code = p.code || '';
+
+          if (
+            code.includes(pattern) ||
+            name.includes(key) ||
+            name.includes('lunite') || // ✅ important for WW
+            name.includes('wuthering')
+          ) {
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(p);
+          }
+        }
+      });
+
+      // ✅ PICK CHEAPEST
+      const cheapest = Object.values(groups).map(list =>
+        list.sort((a, b) => a.price - b.price)[0]
+      );
+
+      cheapest.forEach(p => {
+        allFinalProducts.push({
+          ...p,
+          gameName: game.name
+        });
+      });
+    }
+
+    // ✅ SAVE
+    const ops = allFinalProducts.map(p => {
+      const category = categoryMap[p.category_code];
 
       return {
         updateOne: {
           filter: { supplierId: p.code },
           update: {
             name: p.name,
-            price: Math.ceil(p.price * 1.15),
 
-            category: category ? category._id : null, // ✅ FIX
-            categoryName: category ? category.name : p.category_name || 'Other',
+            // 🔥 Portuguese fix later (optional)
+            displayName: p.name,
 
-            supplierCategory: p.category_code,
             supplierId: p.code,
+            supplierCategory: p.category_code,
 
-            image: p.image || '',
-            isActive: p.status === 'available'
+            price: Math.max(1, Math.ceil(p.price * 0.00029)),
+
+            category: category?._id,
+            categoryName: category?.name,
+
+            isActive: true
           },
           upsert: true
         }
       };
     });
 
+    await Product.deleteMany({});
     await Product.bulkWrite(ops);
 
-    return { success: true, total: products.length };
+    return {
+      success: true,
+      total: allFinalProducts.length
+    };
 
   } catch (error) {
-    console.error(error);
+    console.error('❌ Sync Products Error:', error);
     throw error;
   }
 };
@@ -505,14 +614,28 @@ exports.syncProducts = async () => {
 exports.createOrder = async (order, product) => {
   try {
     const payload = {
-      user_id: order.userGameId || undefined,
-      additional_id: order.serverId || undefined,
-      additional_information: order.nickname || undefined,
       count_order: 1,
-      product_code: product.supplierId,
+      product_code: product.supplierId, // ✅ dynamic
       partner_reference_id: order._id.toString(),
-      end_user_ip_address: order.userIpAddress || '1.1.1.1'
+      end_user_ip_address: order.userIpAddress || "139.135.44.196"
     };
+
+    // ✅ USER ID (dynamic)
+    if (order.userGameId) {
+      payload.user_id = order.userGameId;
+    }
+
+    // ✅ SERVER / REGION (dynamic)
+    if (order.serverId) {
+      payload.additional_id = order.serverId; // must match "Asia", "America", etc.
+    }
+
+    // ✅ OPTIONAL (nickname if required)
+    if (order.nickname) {
+      payload.additional_information = order.nickname;
+    }
+
+    console.log("📤 FINAL LAPAK PAYLOAD:", payload);
 
     const res = await api.post('/api/order', payload, {
       headers: {
@@ -521,14 +644,15 @@ exports.createOrder = async (order, product) => {
       }
     });
 
+    console.log('📦 LAPAK RESPONSE:', res.data);
+
     if (res.data.code !== 'SUCCESS') {
-      throw new Error(res.data.message || 'Order failed');
+      throw new Error(JSON.stringify(res.data));
     }
 
     const supplierData = res.data.data;
 
-    // ✅ SAVE IMPORTANT DATA
-    order.supplierOrderId = supplierData.tid; // 🔥 VERY IMPORTANT
+    order.supplierOrderId = supplierData.tid;
     order.supplierStatus = 'processing';
     order.supplierResponse = res.data;
 

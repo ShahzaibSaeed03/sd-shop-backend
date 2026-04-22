@@ -14,7 +14,7 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
 
     let finalPrice = product.price;
 
-    // optional: apply coupon
+    // coupon
     if (code) {
       const result = await influencerService.applyCode(code, product.price);
       finalPrice = result.finalPrice;
@@ -22,24 +22,12 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
 
     const paymentMethod = gameData.method || 'pix';
 
-    // fee logic
+    // fee
     let feePercent = paymentMethod === 'card' ? 5.4 : 1;
     const feeAmount = (finalPrice * feePercent) / 100;
     const totalAmount = finalPrice + feeAmount;
 
-    // ✅ CREATE PAYMENT ONLY
-    const payment = await paymentService.createPayment({
-      amount: totalAmount,
-      method: paymentMethod,
-      token: gameData.token,
-      email
-    });
-    await Order.findByIdAndUpdate(orderId, {
-      paymentId: payment.id,
-      status: 'pending_payment'
-    });
-
-    // ✅ CREATE ORDER (NO LAPAK HERE)
+    // ✅ STEP 1: CREATE ORDER FIRST
     const order = await Order.create({
       user: userId,
       product: productId,
@@ -48,17 +36,28 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
       paymentFee: feeAmount,
       totalAmount: totalAmount,
       paymentMethod: paymentMethod,
-
-      paymentId: payment.id,
-
+      userIpAddress: gameData.userIpAddress,
       userGameId: gameData.user_id,
       serverId: gameData.server_id,
       zoneId: gameData.zone_id,
       nickname: gameData.nickname,
 
-      status: 'pending_payment',   // 🔥 IMPORTANT
+      status: 'pending', // 🔥 IMPORTANT (see below)
       supplierStatus: 'pending'
     });
+
+    // ✅ STEP 2: CREATE PAYMENT
+    const payment = await paymentService.createPayment({
+      amount: totalAmount,
+      method: paymentMethod,
+      token: gameData.token,
+      email
+    });
+
+    // ✅ STEP 3: UPDATE ORDER WITH PAYMENT ID
+    order.paymentId = payment.id;
+    order.status = 'pending'; // OR keep pending
+    await order.save();
 
     await invoiceService.createInvoice(order);
 

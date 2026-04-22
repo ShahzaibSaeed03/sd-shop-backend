@@ -19,7 +19,7 @@ exports.createPayment = async ({ amount, email, method, token }) => {
     transaction_amount: Number(amount),
     description: 'Game Pack Purchase',
     payer: { email },
-    notification_url: process.env.WEBHOOK_URL
+    notification_url: `${process.env.BASE_URL}/api/payments/webhook`
   };
 
   // ✅ PIX

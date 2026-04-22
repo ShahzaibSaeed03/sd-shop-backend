@@ -4,16 +4,24 @@ const Product = require('../products/product.model');
 // ==========================
 // CREATE
 // ==========================
+const validateProducts = async (ids = []) => {
+  const products = await Product.find({
+    _id: { $in: ids }
+  }).select('_id');
+
+  return products.map(p => p._id);
+};
 exports.createSection = async (data) => {
 
   if (!data.name) throw new Error('Section name required');
 
-  // ✅ manual mode
   if (data.mode === 'manual') {
     data.apiSource = null;
+
+    // ✅ ONLY VALID PRODUCT IDS SAVED
+    data.products = await validateProducts(data.products);
   }
 
-  // ✅ api mode
   if (data.mode === 'api') {
     data.products = [];
   }
@@ -50,16 +58,15 @@ exports.getFrontendSections = async () => {
     if (section.mode === 'manual') {
 
       const products = await Product.find({
-        _id: { $in: section.products },
-        isActive: true
+        _id: { $in: section.products }
       })
-        .populate('category', 'name') // optional
+        .populate('category', 'name')
         .lean();
 
-      // ✅ keep order same as saved
+      // ✅ KEEP ORDER + INCLUDE EVEN WITHOUT CATEGORY
       data = section.products
         .map(id => products.find(p => p._id.toString() === id.toString()))
-        .filter(Boolean);
+        .filter(p => p && p.isActive); // only check product active
     }
 
     // ==========================
@@ -117,6 +124,10 @@ exports.updateSection = async (id, data) => {
 
   if (data.mode === 'manual') {
     data.apiSource = null;
+
+    if (data.products) {
+      data.products = await validateProducts(data.products);
+    }
   }
 
   if (data.mode === 'api') {

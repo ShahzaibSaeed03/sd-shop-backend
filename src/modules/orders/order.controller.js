@@ -3,14 +3,24 @@ const service = require('./order.service');
 // ✅ CREATE
 exports.create = async (req, res, next) => {
   try {
-    const result = await service.createOrder(
-      req.user._id,
+    // ✅ get real client IP
+    const ip =
+      req.headers['x-forwarded-for']?.split(',')[0] ||
+      req.socket?.remoteAddress ||
+      req.ip;
+
+    const order = await service.createOrder(
+      req.user.id,
       req.body.productId,
       req.body.code,
-      req.user.email,
-      req.body
+      req.body.email,
+      {
+        ...req.body,
+        userIpAddress: ip // ✅ pass IP here
+      }
     );
-    res.status(201).json(result);
+
+    res.status(201).json(order);
   } catch (err) {
     next(err);
   }
