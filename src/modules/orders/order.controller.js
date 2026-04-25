@@ -3,20 +3,19 @@ const service = require('./order.service');
 // ✅ CREATE
 exports.create = async (req, res, next) => {
   try {
-    // ✅ get real client IP
-    const ip =
-      req.headers['x-forwarded-for']?.split(',')[0] ||
-      req.socket?.remoteAddress ||
-      req.ip;
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || req.ip;
+
+    // ✅ Get email from authenticated user
+    const userEmail = req.user.email; // Assuming your User model has email field
 
     const order = await service.createOrder(
       req.user.id,
       req.body.productId,
       req.body.code,
-      req.body.email,
+      userEmail,  // ✅ Pass the user's email from database
       {
         ...req.body,
-        userIpAddress: ip // ✅ pass IP here
+        userIpAddress: ip
       }
     );
 
@@ -126,6 +125,15 @@ exports.getOne = async (req, res, next) => {
   try {
     const order = await service.getOrderById(req.params.id);
     res.json(order);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDashboard = async (req, res, next) => {
+  try {
+    const data = await service.getDashboard();
+    res.json(data);
   } catch (err) {
     next(err);
   }

@@ -31,8 +31,13 @@ exports.create = async (req, res, next) => {
 exports.getAll = async (req, res, next) => {
   try {
     const products = await service.getProducts(req.query, req.user);
-    res.json(products);
-  } catch (err) {
+res.json({
+  ...products,
+  data: products.data.map(p => ({
+    ...p,
+    forms: p.category?.forms || [] // 🔥 ADD THIS
+  }))
+});  } catch (err) {
     next(err);
   }
 };
@@ -40,19 +45,22 @@ exports.getAll = async (req, res, next) => {
 
 exports.getOne = async (req, res, next) => {
   try {
-    const product = await service.getProductById(req.params.id);
+    // ✅ populate category (IMPORTANT)
+    const product = await service.getProductById(req.params.id, true);
 
-    // ✅ FIX 1: handle null
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // 🔐 block inactive product for normal users
     if (!product.isActive && req.user?.role !== 'admin') {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.json(product);
+    // ✅ SEND FORMS ALSO
+    res.json({
+      ...product.toObject(),
+      forms: product.category?.forms || [] // 🔥 MAIN LINE
+    });
 
   } catch (err) {
     next(err);
@@ -88,8 +96,10 @@ exports.update = async (req, res, next) => {
 
     const product = await service.updateProduct(req.params.id, data);
 
-    res.json(product);
-
+    res.json({
+      ...product.toObject(),
+      forms: product.category?.forms || [] // 🔥 ADD THIS
+    });
   } catch (err) {
     next(err);
   }

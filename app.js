@@ -14,7 +14,11 @@ const app = express();
 app.use('/api/payments/webhook', express.json());
 // Middlewares
 app.use(cors({
-  origin: 'http://localhost:4200',
+  origin: [
+    'http://76.13.103.115:4200',
+    'http://76.13.103.115:4301',
+    'http://localhost:4200'
+  ],
   credentials: true
 }));
 app.use(express.json());

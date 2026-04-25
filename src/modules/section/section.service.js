@@ -4,6 +4,63 @@ const Product = require('../products/product.model');
 // ==========================
 // CREATE
 // ==========================
+
+const getProductsWithStats = async (match = {}, limit = 10, sort = { createdAt: -1 }) => {
+
+  return await Product.aggregate([
+
+    { $match: match },
+
+    // ✅ REVIEWS
+    {
+      $lookup: {
+        from: "reviews",
+        localField: "_id",
+        foreignField: "product",
+        as: "reviews"
+      }
+    },
+
+    // ✅ ORDERS
+    {
+      $lookup: {
+        from: "orders",
+        localField: "_id",
+        foreignField: "product",
+        as: "orders"
+      }
+    },
+
+    // ✅ CALCULATE
+    {
+      $addFields: {
+        totalReviews: { $size: "$reviews" },
+        rating: {
+          $cond: [
+            { $gt: [{ $size: "$reviews" }, 0] },
+            { $avg: "$reviews.rating" },
+            0
+          ]
+        },
+        sold: { $size: "$orders" }
+      }
+    },
+
+    // ✅ CLEAN
+    {
+      $project: {
+        reviews: 0,
+        orders: 0
+      }
+    },
+
+    { $sort: sort },
+    { $limit: limit }
+
+  ]);
+};
+
+
 const validateProducts = async (ids = []) => {
   const products = await Product.find({
     _id: { $in: ids }
@@ -57,16 +114,27 @@ exports.getFrontendSections = async () => {
     // ==========================
     if (section.mode === 'manual') {
 
-      const products = await Product.find({
-        _id: { $in: section.products }
-      })
-        .populate('category', 'name')
-        .lean();
+      const products = await getProductsWithStats({
+        _id: { $in: section.products },
+        isActive: true
+      }, 50);
+
 
       // ✅ KEEP ORDER + INCLUDE EVEN WITHOUT CATEGORY
       data = section.products
-        .map(id => products.find(p => p._id.toString() === id.toString()))
-        .filter(p => p && p.isActive); // only check product active
+        .map(id => {
+          const p = products.find(x => x._id.toString() === id.toString());
+
+          if (!p || !p.isActive) return null;
+
+          return {
+            _id: p._id,
+            name: p.name,
+            image: p.image, // ✅ fallback
+            price: p.price
+          };
+        })
+        .filter(Boolean);
     }
 
     // ==========================
@@ -77,30 +145,35 @@ exports.getFrontendSections = async () => {
       switch (section.apiSource) {
 
         case 'top_games':
-          data = await Product.find({ isActive: true })
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .lean();
+          data = await getProductsWithStats(
+            { isActive: true },
+            10,
+            { createdAt: -1 }
+          );
           break;
 
-        case 'hot_selling':
-          data = await Product.find({ isActive: true })
-            .sort({ price: -1 }) // TODO: replace with orders count
-            .limit(10)
-            .lean();
-          break;
+       case 'hot_selling':
+  data = await getProductsWithStats(
+    { isActive: true },
+    10,
+    { sold: -1 }
+  );
+  break;
 
         case 'new_releases':
-          data = await Product.find({ isActive: true })
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .lean();
+          data = await getProductsWithStats(
+            { isActive: true },
+            10,
+            { createdAt: -1 }
+          );
           break;
+        
 
         case 'featured':
-          data = await Product.find({ isActive: true, featured: true })
-            .limit(10)
-            .lean();
+          data = await getProductsWithStats(
+            { isActive: true, featured: true },
+            10
+          );
           break;
 
         default:

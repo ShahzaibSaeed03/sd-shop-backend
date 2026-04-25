@@ -385,52 +385,109 @@ const deriveRequirementsFromForms = (forms = []) => {
 // 🔹 SYNC CATEGORIES
 exports.syncCategories = async () => {
   try {
-    const categories = await exports.fetchCategories();
+    // ✅ FIXED (CLIENT REQUIRED)
+    const FIXED_CATEGORIES = [
+      {
+        code: 'HSTR',
+        name: 'Honkai Star Rail',
+        forms: [
+          { name: 'user_id', type: 'text' },
+          {
+            name: 'additional_id',
+            type: 'option',
+            options: [
+              { value: 'Asia', name: 'Asia' },
+              { value: 'America', name: 'America' },
+              { value: 'Europe', name: 'Europe' },
+              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
+            ]
+          }
+        ]
+      },
 
-    // ✅ ONLY ALLOWED CATEGORIES
-    const allowedCodes = ['HSTR', 'GI', 'ZZZ', 'WW'];
+      {
+        code: 'GI',
+        name: 'Genshin Impact',
+        forms: [
+          { name: 'user_id', type: 'text' },
+          {
+            name: 'additional_id',
+            type: 'option',
+            options: [
+              { value: 'America', name: 'America' },
+              { value: 'Asia', name: 'Asia' },
+              { value: 'Europe', name: 'Europe' },
+              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
+            ]
+          }
+        ]
+      },
 
-    const filtered = categories.filter(c =>
-      allowedCodes.includes(c.code)
-    );
+      {
+        code: 'ZZZ',
+        name: 'Zenless Zone Zero',
+        forms: [
+          { name: 'user_id', type: 'number' },
+          {
+            name: 'additional_id',
+            type: 'option',
+            options: [
+              { value: 'America', name: 'America' },
+              { value: 'Asia', name: 'Asia' },
+              { value: 'Europe', name: 'Europe' },
+              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
+            ]
+          }
+        ]
+      },
 
-    const ops = filtered.map(c => {
-      const requirements = deriveRequirementsFromForms(c.forms);
+      {
+        code: 'WW',
+        name: 'Wuthering Waves',
+        forms: [
+          { name: 'user_id', type: 'number' },
+          {
+            name: 'additional_id',
+            type: 'option',
+            options: [
+              { value: 'SEA', name: 'SEA' },
+              { value: 'Asia', name: 'Asia' },
+              { value: 'America', name: 'America' },
+              { value: 'Europe', name: 'Europe' },
+              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
+            ]
+          }
+        ]
+      }
+    ];
 
-      return {
-        updateOne: {
-          filter: { code: c.code },
-          update: {
+    const ops = FIXED_CATEGORIES.map(c => ({
+      updateOne: {
+        filter: { code: c.code },
+        update: {
+          $set: {
             code: c.code,
             name: c.name,
+            forms: c.forms,   // ✅ now correct
             slug: slugify(c.name),
             game: c.name,
+            isActive: true
+          }
+        },
+        upsert: true
+      }
+    }));
 
-            supplierCode: c.code,
-            country: c.country_code,
-
-            isActive: true,
-
-            ...requirements,
-
-            rawForms: c.forms || [],
-            rawServers: c.servers || []
-          },
-          upsert: true
-        }
-      };
-    });
-
-    // 🧹 REMOVE OLD WRONG CATEGORIES
+    // ❌ remove all other categories
     await Category.deleteMany({
-      code: { $nin: allowedCodes }
+      code: { $nin: FIXED_CATEGORIES.map(c => c.code) }
     });
 
     await Category.bulkWrite(ops);
 
     return {
       success: true,
-      total: filtered.length
+      total: FIXED_CATEGORIES.length
     };
 
   } catch (error) {
@@ -466,123 +523,75 @@ exports.syncProducts = async () => {
   try {
     const products = await exports.fetchProducts();
 
-    const TARGET_GAMES = {
-      HSTR: {
-        name: 'Honkai Star Rail',
-        keys: {
-          express: 'HSTRESP',
-          '60': 'HSTR60',
-          '300': 'HSTR300',
-          '980': 'HSTR980',
-          '1980': 'HSTR1980',
-          '3280': 'HSTR3280',
-          '6480': 'HSTR6480'
-        }
-      },
-
-      GI: {
-        name: 'Genshin Impact',
-        keys: {
-          express: 'WELKIN',
-          '60': 'GI60',
-          '300': 'GI300',
-          '980': 'GI980',
-          '1980': 'GI1980',
-          '3280': 'GI3280',
-          '6480': 'GI6480'
-        }
-      },
-
-      ZZZ: {
-        name: 'Zenless Zone Zero',
-        keys: {
-          express: 'ZZZPASS', // or Inter-Knot Membership
-          '60': 'ZZZ60',
-          '300': 'ZZZ300',
-          '980': 'ZZZ980',
-          '1980': 'ZZZ1980',
-          '3280': 'ZZZ3280',
-          '6480': 'ZZZ6480'
-        }
-      },
-
-      // ✅ ADD THIS
-      WW: {
-        name: 'Wuthering Waves',
-        keys: {
-          express: 'WWPASS', // sometimes "lunite subscription"
-          '60': 'WW60',
-          '300': 'WW300',
-          '980': 'WW980',
-          '1980': 'WW1980',
-          '3280': 'WW3280',
-          '6480': 'WW6480'
-        }
-      }
-    };
-
     const categories = await Category.find({});
     const categoryMap = {};
     categories.forEach(c => {
       categoryMap[c.code] = c;
     });
 
-    const allFinalProducts = [];
+    // ✅ CLIENT FIXED PRODUCTS
+    const FIXED_PRODUCTS = [
+      // ---------------- HSR ----------------
+      { code: 'HSTRESP-S117-br', name: 'Express Supply Pass', game: 'HSTR' },
+      { code: 'HSTR60-S116-br', name: '60 Oneiric Shard', game: 'HSTR' },
+      { code: 'HSTR300-S117-br', name: '300 + 30 Oneiric Shard', game: 'HSTR' },
+      { code: 'HSTR980-S117-br', name: '980 + 110 Oneiric Shard', game: 'HSTR' },
+      { code: 'HSTR1980-S117-br', name: '1980 + 260 Oneiric Shard', game: 'HSTR' },
+      { code: 'HSTR3280-S116-br', name: '3280 + 600 Oneiric Shard', game: 'HSTR' },
+      { code: 'HSTR6480-S116-br', name: '6480 + 1600 Oneiric Shard', game: 'HSTR' },
 
-    // 🔥 LOOP ALL GAMES
-    for (const [code, game] of Object.entries(TARGET_GAMES)) {
+      // ---------------- GI ----------------
+      { code: 'GIWELKIN-S113-br', name: 'Blessing Welkin Moon', game: 'GI' },
+      { code: 'GI60-S113-br', name: '60 Crystals', game: 'GI' },
+      { code: 'GI330-S113-br', name: '300 + 30 Crystals', game: 'GI' },
+      { code: 'GI1090-S113-br', name: '980 + 110 Crystals', game: 'GI' },
+      { code: 'GI2240-S113-br', name: '1980 + 260 Crystals', game: 'GI' },
+      { code: 'GI3940-S27-br', name: '3280 + 600 Crystals', game: 'GI' },
+      { code: 'GI8080-S113-br', name: '6480 + 1600 Crystals', game: 'GI' },
 
-      const gameProducts = products.filter(p =>
-        p.category_code === code || p.code?.startsWith(code)
-      );
+      // ---------------- ZZZ ----------------
+      { code: 'ZZZPASS-S1-br', name: 'Inter-Knot Membership', game: 'ZZZ' },
+      { code: 'ZZZ60-S1-br', name: '60 Monochrome', game: 'ZZZ' },
+      { code: 'ZZZ300-S116-br', name: '300 + 30 Monochrome', game: 'ZZZ' },
+      { code: 'ZZZ980-S117-br', name: '980 + 110 Monochrome', game: 'ZZZ' },
+      { code: 'ZZZ1980-S116-br', name: '1980 + 260 Monochrome', game: 'ZZZ' },
+      { code: 'ZZZ3280-S117-br', name: '3280 + 600 Monochrome', game: 'ZZZ' },
+      { code: 'ZZZ6480-S116-br', name: '6480 + 1600 Monochrome', game: 'ZZZ' },
 
-      const groups = {};
+      // ---------------- WW (CLIENT PROVIDED) ----------------
+      { code: 'WUTWVSLS1-S96A', name: 'Lunite Subscription', game: 'WW' },
+      { code: 'WUTWVS60-S96A', name: '60 Lunites', game: 'WW' },
+      { code: 'WUTWVS300-S96A', name: '300 Lunites', game: 'WW' },
+      { code: 'WUTWVS980-S96A', name: '980 Lunites', game: 'WW' },
+      { code: 'WUTWVS1980-S96A', name: '1980 Lunites', game: 'WW' },
+      { code: 'WUTWVS3280-S19', name: '3280 Lunites', game: 'WW' },
+      { code: 'WUTWVS6480-S19', name: '6480 Lunites', game: 'WW' }
+    ];
 
-      gameProducts.forEach(p => {
-        for (const [key, pattern] of Object.entries(game.keys)) {
-          const name = p.name?.toLowerCase() || '';
-          const code = p.code || '';
+    // ✅ MATCH FROM SUPPLIER RESPONSE
+    const finalProducts = FIXED_PRODUCTS.map(fp => {
+      const found = products.find(p => p.code === fp.code);
 
-          if (
-            code.includes(pattern) ||
-            name.includes(key) ||
-            name.includes('lunite') || // ✅ important for WW
-            name.includes('wuthering')
-          ) {
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(p);
-          }
-        }
-      });
-
-      // ✅ PICK CHEAPEST
-      const cheapest = Object.values(groups).map(list =>
-        list.sort((a, b) => a.price - b.price)[0]
-      );
-
-      cheapest.forEach(p => {
-        allFinalProducts.push({
-          ...p,
-          gameName: game.name
-        });
-      });
-    }
+      return {
+        ...fp,
+        price: found?.price || 0,
+        supplierCategory: found?.category_code || fp.game
+      };
+    });
 
     // ✅ SAVE
-    const ops = allFinalProducts.map(p => {
-      const category = categoryMap[p.category_code];
+    const ops = finalProducts.map(p => {
+      const category = categoryMap[p.game];
 
       return {
         updateOne: {
-          filter: { supplierId: p.code },
+          filter: { supplierId: p.code }, // 🔑 unique key
           update: {
             name: p.name,
-
-            // 🔥 Portuguese fix later (optional)
             displayName: p.name,
 
             supplierId: p.code,
-            supplierCategory: p.category_code,
+            supplierCategory: p.supplierCategory,
 
             price: Math.max(1, Math.ceil(p.price * 0.00029)),
 
@@ -596,12 +605,13 @@ exports.syncProducts = async () => {
       };
     });
 
-    await Product.deleteMany({});
     await Product.bulkWrite(ops);
+
+
 
     return {
       success: true,
-      total: allFinalProducts.length
+      total: finalProducts.length
     };
 
   } catch (error) {
@@ -609,33 +619,94 @@ exports.syncProducts = async () => {
     throw error;
   }
 };
-
-// 🔹 CREATE ORDER
-exports.createOrder = async (order, product) => {
+// 🔹 CHECK USER ID (USERNAME VALIDATION)
+exports.checkUserId = async ({ categoryCode, userId, serverId, nickname }) => {
   try {
-    const payload = {
-      count_order: 1,
-      product_code: product.supplierId, // ✅ dynamic
-      partner_reference_id: order._id.toString(),
-      end_user_ip_address: order.userIpAddress || "139.135.44.196"
+
+    if (!serverId) {
+      console.log('❌ SERVER MISSING');
+      return {
+        success: false,
+        message: 'Server required'
+      };
+    }
+
+    const params = {
+      category_code: categoryCode,
+      user_id: userId,
+      additional_id: serverId
     };
 
-    // ✅ USER ID (dynamic)
+    if (nickname) {
+      params.additional_information = nickname;
+    }
+
+    console.log('📤 FINAL PARAMS:', params);
+
+    const res = await api.post('/api/uid-check', null, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'X-COUNTRY': 'br'
+      },
+      params
+    });
+
+    console.log('📥 RESPONSE:', res.data);
+
+    if (res.data.code !== 'SUCCESS') {
+      console.log('❌ INVALID USER');
+      return { success: false };
+    }
+
+    console.log('✅ VALID USER:', res.data.data);
+
+    return {
+      success: true,
+      username: res.data.data?.name || null
+    };
+
+  } catch (error) {
+    console.error('❌ ERROR:', error.response?.data || error.message);
+    throw error;
+  }
+};
+// 🔹 CREATE ORDER
+// supplier.service.js - FIXED createOrder function
+
+exports.createOrder = async (order, product) => {
+  if (!order.userIpAddress) {
+    throw new Error('User IP missing');
+  }
+  
+  try {
+    // ✅ Build payload with CORRECT payer field
+    const payload = {
+      count_order: 1,
+      product_code: product.supplierId,
+      partner_reference_id: order._id.toString(),
+      end_user_ip_address: order.userIpAddress || "139.135.44.196",
+      
+      // 🔥 CRITICAL: payer field with user identification
+      payer: {
+        user_id: order.user.toString(),  // User ID from your database
+        email: order.email               // Email from order
+      }
+    };
+
+    // ✅ Add game-specific fields
     if (order.userGameId) {
-      payload.user_id = order.userGameId;
+      payload.user_id = order.userGameId;  // "603331945"
     }
 
-    // ✅ SERVER / REGION (dynamic)
     if (order.serverId) {
-      payload.additional_id = order.serverId; // must match "Asia", "America", etc.
+      payload.additional_id = order.serverId;  // "America"
     }
 
-    // ✅ OPTIONAL (nickname if required)
     if (order.nickname) {
-      payload.additional_information = order.nickname;
+      payload.additional_information = order.nickname;  // "T*****a"
     }
 
-    console.log("📤 FINAL LAPAK PAYLOAD:", payload);
+    console.log("📤 LAPAK PAYLOAD:", JSON.stringify(payload, null, 2));
 
     const res = await api.post('/api/order', payload, {
       headers: {
@@ -647,12 +718,12 @@ exports.createOrder = async (order, product) => {
     console.log('📦 LAPAK RESPONSE:', res.data);
 
     if (res.data.code !== 'SUCCESS') {
-      throw new Error(JSON.stringify(res.data));
+      throw new Error(res.data.message || JSON.stringify(res.data));
     }
 
     const supplierData = res.data.data;
 
-    order.supplierOrderId = supplierData.tid;
+    order.supplierTid = supplierData.tid;  // Note: you have supplierTid, not supplierOrderId
     order.supplierStatus = 'processing';
     order.supplierResponse = res.data;
 
@@ -661,7 +732,11 @@ exports.createOrder = async (order, product) => {
     return supplierData;
 
   } catch (error) {
-    console.error('❌ Create Order Error:', error.response?.data || error.message);
+    console.error('❌ Create Order Error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     throw error;
   }
 };

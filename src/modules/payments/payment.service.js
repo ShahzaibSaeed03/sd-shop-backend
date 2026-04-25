@@ -66,6 +66,11 @@ exports.handleWebhook = async (payload) => {
     const order = await Order.findOne({ paymentId: payment.id });
     if (!order) return;
 
+    // ✅ SAVE LOG WITH ORDER ID
+    await WebhookLog.create({
+      orderId: order._id,
+      payload,
+    });
     // ✅ ONLY APPROVED
     if (payment.status !== 'approved') return;
 

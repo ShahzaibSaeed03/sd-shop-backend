@@ -111,6 +111,8 @@ router.post('/', protect, controller.create);
  *                       price:
  *                         type: number
  */
+router.get('/dashboard', protect, isAdmin, controller.getDashboard);
+
 router.get('/my', protect, controller.getMyOrders);
 
 /**

@@ -26,15 +26,29 @@ exports.create = async (req, res, next) => {
 exports.webhook = async (req, res) => {
   try {
 
-    console.log('🔥 WEBHOOK HIT');
+    const payload = req.body;
 
-    // ✅ SAVE LOG
+    // 🔥 get payment id
+    const paymentId = payload?.data?.id || payload?.id;
+
+    let order = null;
+
+    if (paymentId) {
+      const payment = await paymentService.getPayment(paymentId);
+
+      if (payment) {
+        order = await Order.findOne({ paymentId: payment.id });
+      }
+    }
+
+    // ✅ SAVE WITH ORDER LINK
     await WebhookLog.create({
-      payload: req.body,
+      orderId: order?._id || null,
+      payload,
       headers: req.headers
     });
 
-    await paymentService.handleWebhook(req.body);
+    await paymentService.handleWebhook(payload);
 
     res.sendStatus(200);
 
@@ -55,6 +69,20 @@ exports.getLogs = async (req, res) => {
 
   } catch (err) {
     console.log('❌ LOG FETCH ERROR:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+exports.getOrderLogs = async (req, res) => {
+  try {
+    const logs = await WebhookLog.find({ orderId: req.params.id })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: logs
+    });
+
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };

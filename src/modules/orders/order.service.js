@@ -4,8 +4,10 @@ const influencerService = require('../influencer/influencer.service');
 const invoiceService = require('../invoice/invoice.service');
 const paymentService = require('../payments/payment.service');
 const supplierService = require('../supplier/supplier.service');
+const WebhookLog = require('../payments/webhookLog.model');
 
 // ✅ CREATE ORDER
+
 
 exports.createOrder = async (userId, productId, code, email, gameData) => {
   try {
@@ -14,39 +16,42 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
 
     let finalPrice = product.price;
 
-    // coupon
     if (code) {
       const result = await influencerService.applyCode(code, product.price);
       finalPrice = result.finalPrice;
     }
 
     const paymentMethod = gameData.method || 'pix';
-
-    // fee
     let feePercent = paymentMethod === 'card' ? 5.4 : 1;
     const feeAmount = (finalPrice * feePercent) / 100;
     const totalAmount = finalPrice + feeAmount;
 
-    // ✅ STEP 1: CREATE ORDER FIRST
+    // ✅ Create order with email field
     const order = await Order.create({
       user: userId,
+      email: email,  // ✅ CRITICAL: Save email
       product: productId,
-
       price: finalPrice,
       paymentFee: feeAmount,
       totalAmount: totalAmount,
       paymentMethod: paymentMethod,
       userIpAddress: gameData.userIpAddress,
-      userGameId: gameData.user_id,
-      serverId: gameData.server_id,
+      userGameId: gameData.user_id,     // "603331945"
+      serverId: gameData.server_id,      // "America"
       zoneId: gameData.zone_id,
-      nickname: gameData.nickname,
-
-      status: 'pending', // 🔥 IMPORTANT (see below)
+      nickname: gameData.nickname,       // "T*****a"
+      status: 'pending_payment',
       supplierStatus: 'pending'
     });
 
-    // ✅ STEP 2: CREATE PAYMENT
+    console.log("✅ Order created:", {
+      id: order._id,
+      email: order.email,
+      userGameId: order.userGameId,
+      serverId: order.serverId
+    });
+
+    // Create payment
     const payment = await paymentService.createPayment({
       amount: totalAmount,
       method: paymentMethod,
@@ -54,17 +59,12 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
       email
     });
 
-    // ✅ STEP 3: UPDATE ORDER WITH PAYMENT ID
     order.paymentId = payment.id;
-    order.status = 'pending'; // OR keep pending
     await order.save();
 
     await invoiceService.createInvoice(order);
 
-    return {
-      order,
-      payment
-    };
+    return { order, payment };
 
   } catch (err) {
     console.log('❌ CREATE ORDER ERROR:', err.message);
@@ -202,4 +202,58 @@ exports.getOrderById = async (orderId) => {
   if (!order) throw new Error('Order not found');
 
   return order;
+};
+
+
+exports.getDashboard = async () => {
+  const now = new Date();
+  const last15Min = new Date(now.getTime() - 15 * 60 * 1000);
+
+  const [
+    failedOrders,
+    pendingOrders,
+    totalOrders,
+    activeGames,
+    allOrders,
+    webhookFailures
+  ] = await Promise.all([
+    Order.countDocuments({ status: 'failed' }),
+    Order.countDocuments({ status: { $in: ['pending', 'pending_payment'] } }),
+    Order.countDocuments(),
+    Product.countDocuments({ isActive: true }),
+
+    Order.find({})
+      .populate('product', 'name')
+      .sort({ createdAt: -1 })
+      .limit(10),
+
+    WebhookLog.countDocuments({
+      createdAt: { $gte: last15Min }
+    })
+  ]);
+
+  return {
+    success: true,
+
+    stats: {
+      failed: failedOrders,
+      pending: pendingOrders,
+      total: totalOrders,
+      activeGames
+    },
+
+    webhook: {
+      last15MinFails: webhookFailures
+    },
+
+    ordersList: allOrders.map(o => ({
+      id: o._id,
+      orderId: `#ORD-${o._id.toString().slice(-5)}`,
+      game: o.product?.name || 'Unknown',
+      product: o.product?.name || 'Unknown',
+      status: o.status,
+      supplierStatus: o.supplierStatus, // 🔥 KEY
+      createdAt: o.createdAt
+    }))
+  };
 };

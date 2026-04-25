@@ -9,29 +9,79 @@ exports.createProduct = async (data) => {
 
 // ✅ GET ALL (role-based)
 exports.getProducts = async (query, user) => {
-  const filter = {};
+
+  const matchStage = {};
 
   if (user?.role !== 'admin') {
-    filter.isActive = true;
+    matchStage.isActive = true;
   }
 
-  const products = await Product.find(filter)
-    .populate({
-      path: 'category',
-      match: { isActive: true }, // ✅ ONLY ACTIVE CATEGORY
-      select: 'name code isActive'
-    })
-    .sort({ createdAt: -1 });
+  const products = await Product.aggregate([
 
-  // ❗ remove products with null category
-  const filtered = user?.role === 'admin'
-    ? products
-    : products.filter(p => p.category !== null);
+    { $match: matchStage },
+
+    // ✅ CATEGORY
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "category"
+      }
+    },
+    { $unwind: "$category" },
+
+    // ✅ REVIEWS
+    {
+      $lookup: {
+        from: "reviews", // ⚠️ check collection name
+        localField: "_id",
+        foreignField: "product",
+        as: "reviews"
+      }
+    },
+
+    // ✅ ORDERS (for sold)
+    {
+      $lookup: {
+        from: "orders", // ⚠️ check collection name
+        localField: "_id",
+        foreignField: "product",
+        as: "orders"
+      }
+    },
+
+    // ✅ CALCULATIONS
+    {
+      $addFields: {
+        totalReviews: { $size: "$reviews" },
+        rating: {
+          $cond: [
+            { $gt: [{ $size: "$reviews" }, 0] },
+            { $avg: "$reviews.rating" },
+            0
+          ]
+        },
+        sold: { $size: "$orders" }
+      }
+    },
+
+    // ✅ CLEAN
+    {
+      $project: {
+        reviews: 0,
+        orders: 0
+      }
+    },
+
+    { $sort: { createdAt: -1 } }
+
+  ]);
 
   return {
     success: true,
-    total: filtered.length,
-    data: filtered
+    total: products.length,
+    data: products
   };
 };
 
@@ -140,7 +190,8 @@ exports.getProductsByCategory = async (categoryId, user) => {
   const products = await Product.find(filter)
     .populate({
       path: 'category',
-      match: { isActive: true } // ✅ category must be active
+      match: { isActive: true }, // ✅ category must be active
+      select: 'name code forms'
     })
     .sort({ createdAt: -1 });
 

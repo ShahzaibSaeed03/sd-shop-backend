@@ -7,6 +7,11 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
 
+  email: {  // ✅ ADD THIS FIELD
+    type: String,
+    required: true
+  },
+
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
@@ -36,6 +41,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: String,
   paymentFee: Number,
   totalAmount: Number,
+  
   // ✅ SUPPLIER
   supplierTid: String,
   supplierResponse: Object,
@@ -45,13 +51,15 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
-userIpAddress: String,
+  
+  userIpAddress: String,
+  
   // ✅ ORDER STATUS
- status: {
-  type: String,
-  enum: ['pending', 'pending_payment', 'paid', 'failed', 'cancelled', 'refunded'],
-  default: 'pending_payment'
-}
+  status: {
+    type: String,
+    enum: ['pending', 'pending_payment', 'paid', 'failed', 'cancelled', 'refunded'],
+    default: 'pending_payment'
+  }
 
 }, { timestamps: true });
 

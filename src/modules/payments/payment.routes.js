@@ -13,4 +13,5 @@ router.post('/create', protect, controller.create);
 router.post('/webhook', controller.webhook);
 router.get('/logs', controller.getLogs);
 router.get('/logs/:id', controller.getLogById);
+router.get('/order/:id', protect, controller.getOrderLogs);
 module.exports = router;

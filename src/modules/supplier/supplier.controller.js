@@ -10,7 +10,30 @@ exports.syncProducts = async (req, res, next) => {
   }
 };
 // supplier.controller.js
+exports.checkUserId = async (req, res, next) => {
+  try {
+    const { categoryCode, userId, serverId, nickname } = req.body;
 
+    if (!categoryCode || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'categoryCode and userId are required'
+      });
+    }
+
+    const result = await service.checkUserId({
+      categoryCode,
+      userId,
+      serverId,
+      nickname
+    });
+
+    res.json(result);
+
+  } catch (err) {
+    next(err);
+  }
+};
 exports.getCategories = async (req, res, next) => {
   try {
     const categories = await service.fetchCategories();
