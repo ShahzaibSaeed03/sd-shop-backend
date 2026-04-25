@@ -28,18 +28,23 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
 
     // ✅ Create order with email field
     const order = await Order.create({
-      user: userId,
-      email: email,  // ✅ CRITICAL: Save email
+      user: userId || null,
+      isGuest: !userId,
+
+      email,
       product: productId,
       price: finalPrice,
       paymentFee: feeAmount,
       totalAmount: totalAmount,
+
       paymentMethod: paymentMethod,
       userIpAddress: gameData.userIpAddress,
-      userGameId: gameData.user_id,     // "603331945"
-      serverId: gameData.server_id,      // "America"
+
+      userGameId: gameData.user_id,
+      serverId: gameData.server_id,
       zoneId: gameData.zone_id,
-      nickname: gameData.nickname,       // "T*****a"
+      nickname: gameData.nickname,
+
       status: 'pending_payment',
       supplierStatus: 'pending'
     });

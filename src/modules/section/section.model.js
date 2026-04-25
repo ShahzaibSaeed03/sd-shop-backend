@@ -12,10 +12,10 @@ const sectionSchema = new mongoose.Schema({
   },
 
   // 🔵 Manual mode (store product IDs)
-  products: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
-  }],
+ categories: [{
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Category'
+}],
 
   // 🟢 API mode (predefined sources)
   apiSource: {

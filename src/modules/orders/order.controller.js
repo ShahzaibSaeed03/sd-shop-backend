@@ -3,16 +3,25 @@ const service = require('./order.service');
 // ✅ CREATE
 exports.create = async (req, res, next) => {
   try {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || req.ip;
+    console.log('📥 BODY:', req.body);
 
-    // ✅ Get email from authenticated user
-    const userEmail = req.user.email; // Assuming your User model has email field
+    const ip =
+      req.headers['x-forwarded-for']?.split(',')[0] ||
+      req.socket?.remoteAddress ||
+      req.ip;
 
+    const userId = req.user?.id || null;
+
+    // ❌ REMOVE REQUIRED EMAIL
+const email =
+  req.user?.email ||
+  req.body.email ||
+  `guest_${Date.now()}@sdshop.com`;
     const order = await service.createOrder(
-      req.user.id,
+      userId,
       req.body.productId,
       req.body.code,
-      userEmail,  // ✅ Pass the user's email from database
+      email,
       {
         ...req.body,
         userIpAddress: ip
@@ -20,6 +29,7 @@ exports.create = async (req, res, next) => {
     );
 
     res.status(201).json(order);
+
   } catch (err) {
     next(err);
   }

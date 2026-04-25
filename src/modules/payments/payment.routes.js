@@ -5,7 +5,7 @@ const { protect } = require('../auth/auth.middleware');
 // ==========================
 // CREATE PAYMENT
 // ==========================
-router.post('/create', protect, controller.create);
+router.post('/create', controller.create);
 
 // ==========================
 // WEBHOOK (PUBLIC)

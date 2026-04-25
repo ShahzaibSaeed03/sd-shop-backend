@@ -21,7 +21,7 @@ router.get(
 );
 router.post(
   '/check-user',
-  protect,
+
   controller.checkUserId
 );
 module.exports = router;

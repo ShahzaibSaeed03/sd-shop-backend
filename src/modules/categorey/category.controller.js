@@ -88,3 +88,21 @@ exports.getCategories = async (req, res, next) => {
     next(err);
   }
 };
+exports.searchCategories = async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+
+    const categories = await Category.find({
+      name: { $regex: q, $options: 'i' }
+    }).select('name image slug isActive');
+
+    res.json({
+      success: true,
+      total: categories.length,
+      data: categories
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};

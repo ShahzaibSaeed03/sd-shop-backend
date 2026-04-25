@@ -1,8 +1,10 @@
+const qs = require('qs'); 
 const axios = require('axios');
 const Product = require('../products/product.model');
 const Order = require('../orders/order.model');
 const Category = require('../categorey/category.model');
 const { slugify } = require('../../utils/slugify');
+
 // 🔹 CONFIG
 const BASE_URL = process.env.SUPPLIER_BASE_URL || 'https://www.lapakgaming.com';
 const API_KEY = process.env.SUPPLIER_API_KEY;
@@ -673,47 +675,62 @@ exports.checkUserId = async ({ categoryCode, userId, serverId, nickname }) => {
 // 🔹 CREATE ORDER
 // supplier.service.js - FIXED createOrder function
 
+
+
 exports.createOrder = async (order, product) => {
   if (!order.userIpAddress) {
     throw new Error('User IP missing');
   }
-  
+
   try {
-    // ✅ Build payload with CORRECT payer field
+    const guestEmail = order.email || `guest_${order._id}@sdshop.com`;
+
+    // ✅ FLATTENED PAYLOAD (IMPORTANT)
     const payload = {
       count_order: 1,
       product_code: product.supplierId,
       partner_reference_id: order._id.toString(),
       end_user_ip_address: order.userIpAddress || "139.135.44.196",
-      
-      // 🔥 CRITICAL: payer field with user identification
-      payer: {
-        user_id: order.user.toString(),  // User ID from your database
-        email: order.email               // Email from order
-      }
+
+      // 🔥 CRITICAL (MUST BE FLAT)
+      'payer[user_id]': order.user ? order.user.toString() : 'guest',
+      'payer[email]': guestEmail
     };
 
-    // ✅ Add game-specific fields
+    // ✅ GAME DATA
     if (order.userGameId) {
-      payload.user_id = order.userGameId;  // "603331945"
+      payload.user_id = order.userGameId;
     }
 
     if (order.serverId) {
-      payload.additional_id = order.serverId;  // "America"
+      payload.additional_id = order.serverId;
     }
 
     if (order.nickname) {
-      payload.additional_information = order.nickname;  // "T*****a"
+      payload.additional_information = order.nickname;
     }
 
-    console.log("📤 LAPAK PAYLOAD:", JSON.stringify(payload, null, 2));
+    // 🔍 DEBUG
+    console.log("📤 FINAL FORM DATA:", qs.stringify(payload));
 
-    const res = await api.post('/api/order', payload, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json'
+    const res = await axios.post(
+      `${BASE_URL}/api/order`,
+      qs.stringify(payload), // 🔥 MUST
+      {
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          'X-COUNTRY': 'br',
+
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+
+          // 🔥 REQUIRED (Cloudflare bypass)
+          'User-Agent': 'Mozilla/5.0',
+          'Origin': 'https://www.lapakgaming.com',
+          'Referer': 'https://www.lapakgaming.com/'
+        }
       }
-    });
+    );
 
     console.log('📦 LAPAK RESPONSE:', res.data);
 
@@ -723,7 +740,7 @@ exports.createOrder = async (order, product) => {
 
     const supplierData = res.data.data;
 
-    order.supplierTid = supplierData.tid;  // Note: you have supplierTid, not supplierOrderId
+    order.supplierTid = supplierData.tid;
     order.supplierStatus = 'processing';
     order.supplierResponse = res.data;
 

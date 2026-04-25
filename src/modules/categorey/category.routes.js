@@ -13,6 +13,9 @@ const upload = multer({
 // ✅ GET ALL
 router.get('/', protect, isAdmin, controller.getCategories);
 
+// ✅ SEARCH
+router.get('/search', protect, isAdmin, controller.searchCategories);
+
 // ✅ UPDATE
 router.put(
   '/:id',

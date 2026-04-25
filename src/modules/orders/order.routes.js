@@ -71,7 +71,7 @@ const { protect, isAdmin } = require('../auth/auth.middleware');
  *       401:
  *         description: Unauthorized
  */
-router.post('/', protect, controller.create);
+router.post('/', controller.create);
 
 /**
  * @swagger
