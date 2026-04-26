@@ -5,26 +5,29 @@ const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./src/config/swagger');
 const supplierRoutes = require('./src/modules/supplier/supplier.routes');
+
 const app = express();
 
 /**
  * 🔥 IMPORTANT: Webhook must come BEFORE express.json()
- * Otherwise body will be parsed incorrectly
  */
 app.use('/api/payments/webhook', express.json());
-// Middlewares
+
+/**
+ * ✅ CORS CONFIG (FINAL WORKING)
+ */
 const allowedOrigins = [
   'https://sdshop.gg',
   'https://admin.sdshop.gg',
   'http://localhost:4200'
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // allow Postman / curl
 
     if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
+      return callback(null, origin); // dynamic origin
     } else {
       return callback(new Error('Not allowed by CORS'));
     }
@@ -32,20 +35,27 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
-app.use(cors(corsOptions));
+/**
+ * ❗ DO NOT ADD app.options('*') or '/*' (Express v5 crash)
+ */
 
-// ✅ IMPORTANT: same options use karo
-app.options(/.*/, cors(corsOptions));
+/**
+ * Middlewares
+ */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Static (Landing page)
+/**
+ * Static files
+ */
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
+/**
+ * Routes
+ */
 app.use('/api/auth', require('./src/modules/auth/auth.routes'));
 app.use('/api/products', require('./src/modules/products/product.routes'));
 app.use('/api/orders', require('./src/modules/orders/order.routes'));
@@ -60,17 +70,24 @@ app.use('/api/sections', require('./src/modules/section/section.routes'));
 app.use('/api/coupons', require('./src/modules/coupon/coupon.routes'));
 app.use('/api/categories', require('./src/modules/categorey/category.routes'));
 app.use('/api/supplier', supplierRoutes);
-// Swagger Docs
+
+/**
+ * Swagger Docs
+ */
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// 404 handler
+/**
+ * 404 handler
+ */
 app.use((req, res) => {
   res.status(404).json({
     message: 'Route not found'
   });
 });
 
-// Error handler
+/**
+ * Error handler
+ */
 app.use((err, req, res, next) => {
   console.error(err);
 
@@ -78,5 +95,10 @@ app.use((err, req, res, next) => {
     message: err.message || 'Internal Server Error'
   });
 });
+
+/**
+ * Trust proxy (for nginx / cloudflare)
+ */
 app.set('trust proxy', true);
+
 module.exports = app;
