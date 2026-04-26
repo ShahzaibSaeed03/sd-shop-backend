@@ -13,14 +13,29 @@ const app = express();
  */
 app.use('/api/payments/webhook', express.json());
 // Middlewares
+const allowedOrigins = [
+  'https://sdshop.gg',
+  'https://admin.sdshop.gg',
+  'http://localhost:4200'
+];
+
 app.use(cors({
-  origin: [
-    'https://sdshop.gg',
-    'https://admin.sdshop.gg',
-    'http://localhost:4200'
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow postman / curl
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// 🔥 IMPORTANT (preflight fix)
+app.options(/.*/, cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
