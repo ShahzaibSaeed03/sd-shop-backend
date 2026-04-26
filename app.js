@@ -19,9 +19,9 @@ const allowedOrigins = [
   'http://localhost:4200'
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow postman / curl
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -32,10 +32,12 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
 
-// 🔥 IMPORTANT (preflight fix)
-app.options(/.*/, cors());
+app.use(cors(corsOptions));
+
+// ✅ IMPORTANT: same options use karo
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
