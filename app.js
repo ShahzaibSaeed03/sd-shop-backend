@@ -15,8 +15,8 @@ app.use('/api/payments/webhook', express.json());
 // Middlewares
 app.use(cors({
   origin: [
-    'http://76.13.103.115:4200',
-    'http://76.13.103.115:4301',
+    'https://sdshop.gg',
+    'https://admin.sdshop.gg',
     'http://localhost:4200'
   ],
   credentials: true
