@@ -19,7 +19,9 @@ app.use('/api/payments/webhook', express.json());
 const allowedOrigins = [
   'https://sdshop.gg',
   'https://admin.sdshop.gg',
-  'http://localhost:4200'
+  'http://localhost:4200',
+  'https://localhost:4200'
+
 ];
 
 app.use(cors({

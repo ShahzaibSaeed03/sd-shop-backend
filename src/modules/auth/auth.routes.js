@@ -143,7 +143,7 @@ router.post('/login', controller.login);
  */
 router.patch('/make-admin/:id', protect, isAdmin, controller.makeAdmin);
 
-
+router.get('/cashback', protect, controller.getMyCashback);
 router.post('/google', controller.googleLogin);
 
 module.exports = router;

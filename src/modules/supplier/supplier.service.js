@@ -1,9 +1,12 @@
-const qs = require('qs'); 
+const qs = require('qs');
 const axios = require('axios');
 const Product = require('../products/product.model');
 const Order = require('../orders/order.model');
 const Category = require('../categorey/category.model');
 const { slugify } = require('../../utils/slugify');
+
+const axiosRetry = require('axios-retry').default;
+// apply on default axios
 
 // 🔹 CONFIG
 const BASE_URL = process.env.SUPPLIER_BASE_URL || 'https://www.lapakgaming.com';
@@ -349,7 +352,14 @@ const api = axios.create({
     Accept: 'application/json'
   }
 });
-
+axiosRetry(api, {
+  retries: 3,
+  retryDelay: (count) => count * 1000,
+  retryCondition: (error) =>
+    error.code === 'EAI_AGAIN' ||
+    error.code === 'ECONNRESET' ||
+    error.code === 'ENOTFOUND'
+});
 // 🔹 AUTH HEADER HELPER (supports both formats)
 const getAuthHeaders = () => ({
   Authorization: `Bearer ${API_KEY}`, // default
@@ -683,63 +693,58 @@ exports.createOrder = async (order, product) => {
   }
 
   try {
-    const guestEmail = order.email || `guest_${order._id}@sdshop.com`;
+    const email =
+      order.email || `guest_${order._id}@sdshop.com`;
 
-    // ✅ FLATTENED PAYLOAD (IMPORTANT)
+    // fix localhost ip
+    const ip =
+      order.userIpAddress === '::1'
+        ? '139.135.44.196'
+        : order.userIpAddress;
+
+    // ✅ FINAL CORRECT PAYLOAD (JSON)
     const payload = {
-      count_order: 1,
       product_code: product.supplierId,
-      partner_reference_id: order._id.toString(),
-      end_user_ip_address: order.userIpAddress || "139.135.44.196",
+      count_order: 1, // ✅ REQUIRED
 
-      // 🔥 CRITICAL (MUST BE FLAT)
-      'payer[user_id]': order.user ? order.user.toString() : 'guest',
-      'payer[email]': guestEmail
+      partner_reference_id: order._id.toString(),
+      end_user_ip_address: ip,
+
+      payer: {
+        user_id: order.user ? order.user.toString() : 'guest',
+        email: email
+      },
+
+      user_id: order.userGameId,
+      additional_id: order.serverId
     };
 
-    // ✅ GAME DATA
-    if (order.userGameId) {
-      payload.user_id = order.userGameId;
-    }
-
-    if (order.serverId) {
-      payload.additional_id = order.serverId;
-    }
-
-    if (order.nickname) {
+    // optional nickname
+    if (order.nickname && order.nickname.trim() !== '') {
       payload.additional_information = order.nickname;
     }
 
-    // 🔍 DEBUG
-    console.log("📤 FINAL FORM DATA:", qs.stringify(payload));
+    console.log('📤 FINAL JSON:', payload);
 
-    const res = await axios.post(
-      `${BASE_URL}/api/order`,
-      qs.stringify(payload), // 🔥 MUST
-      {
-        headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          'X-COUNTRY': 'br',
-
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-
-          // 🔥 REQUIRED (Cloudflare bypass)
-          'User-Agent': 'Mozilla/5.0',
-          'Origin': 'https://www.lapakgaming.com',
-          'Referer': 'https://www.lapakgaming.com/'
-        }
+    // ✅ IMPORTANT: use api (not axios)
+    const res = await api.post('/api/order', payload, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'X-COUNTRY': 'br',
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
       }
-    );
+    });
 
     console.log('📦 LAPAK RESPONSE:', res.data);
 
     if (res.data.code !== 'SUCCESS') {
-      throw new Error(res.data.message || JSON.stringify(res.data));
+      throw new Error(JSON.stringify(res.data));
     }
 
     const supplierData = res.data.data;
 
+    // save response
     order.supplierTid = supplierData.tid;
     order.supplierStatus = 'processing';
     order.supplierResponse = res.data;
@@ -749,11 +754,17 @@ exports.createOrder = async (order, product) => {
     return supplierData;
 
   } catch (error) {
+
+    if (error.code === 'EAI_AGAIN') {
+      console.log('🔁 DNS issue, retry handled automatically');
+    }
+
     console.error('❌ Create Order Error:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status
     });
+
     throw error;
   }
 };

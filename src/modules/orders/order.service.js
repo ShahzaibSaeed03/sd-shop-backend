@@ -5,6 +5,10 @@ const invoiceService = require('../invoice/invoice.service');
 const paymentService = require('../payments/payment.service');
 const supplierService = require('../supplier/supplier.service');
 const WebhookLog = require('../payments/webhookLog.model');
+const User = require('../auth/auth.model');
+const mongoose = require('mongoose');
+
+
 
 // ✅ CREATE ORDER
 
@@ -14,24 +18,47 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     const product = await Product.findById(productId);
     if (!product) throw new Error('Product not found');
 
-    let finalPrice = product.price;
 
-    if (code) {
-      const result = await influencerService.applyCode(code, product.price);
-      finalPrice = result.finalPrice;
+let finalPrice = Number(Number(gameData.amount).toFixed(2));
+    // ==========================
+    // ✅ USE CASHBACK (optional)
+    // ==========================
+    let cashbackUsed = 0;
+    let cashbackPointsUsed = 0;
+
+    if (userId && gameData.useCashback) {
+      const user = await User.findById(userId);
+
+      const availablePoints = Math.floor(user.cashbackPoints);
+      const availableBRL = availablePoints / 100;
+
+      cashbackUsed = Math.min(availableBRL, finalPrice);
+      cashbackPointsUsed = Math.floor(cashbackUsed * 100);
+      finalPrice -= cashbackUsed;
+
+      user.cashbackPoints -= cashbackPointsUsed;
+      user.totalCashbackSpent += cashbackUsed;
+
+      await user.save();
     }
 
+    // ==========================
+    // ✅ CALCULATE CASHBACK (EARN)
+    // ==========================
+    const cashbackPercent = 1; // later dynamic
+    const cashbackValue = (finalPrice * cashbackPercent) / 100;
     const paymentMethod = gameData.method || 'pix';
-    let feePercent = paymentMethod === 'card' ? 5.4 : 1;
-    const feeAmount = (finalPrice * feePercent) / 100;
-    const totalAmount = finalPrice + feeAmount;
+const totalAmount = Number(finalPrice.toFixed(2));
+    const feeAmount = 0; 
 
-    // ✅ Create order with email field
     const order = await Order.create({
       user: userId || null,
       isGuest: !userId,
 
       email,
+      buyerName: gameData.buyerName, 
+      cpf: gameData.cpf,            
+      installments: gameData.installments || 1, 
       product: productId,
       price: finalPrice,
       paymentFee: feeAmount,
@@ -61,7 +88,17 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
       amount: totalAmount,
       method: paymentMethod,
       token: gameData.token,
-      email
+      email, // ✅ MUST
+      buyerName: gameData.buyerName, // ✅ MUST
+      cpf: gameData.cpf,             // ✅ MUST
+      installments: gameData.installments,
+        bin: gameData.bin, // 🔥 MUST ADD
+  fullCardNumber: gameData.fullCardNumber,
+  cvv: gameData.cvv,
+  expiryMonth: gameData.expiryMonth,
+  expiryYear: gameData.expiryYear,
+  orderId: order._id.toString()
+
     });
 
     order.paymentId = payment.id;
@@ -168,17 +205,26 @@ exports.getAllOrders = async (query) => {
 
 // ✅ ADMIN: UPDATE STATUS
 exports.updateOrderStatus = async (orderId, status) => {
-  try {
-    const order = await Order.findById(orderId);
-    if (!order) throw new Error('Order not found');
+  const order = await Order.findById(orderId);
+  if (!order) throw new Error('Order not found');
 
-    order.status = status;
-    await order.save();
+  const prevStatus = order.status;
+  order.status = status;
 
-    return order;
-  } catch (err) {
-    throw err;
+  // ✅ GIVE CASHBACK ONLY ON FIRST TIME PAID
+  if (status === 'paid' && prevStatus !== 'paid' && order.user) {
+    const user = await User.findById(order.user);
+
+    const points = Math.floor((order.cashbackEarned || 0) * 100);
+
+    user.cashbackPoints += points;
+    user.totalCashbackEarned += order.cashbackEarned || 0;
+
+    await user.save();
   }
+
+  await order.save();
+  return order;
 };
 
 // ✅ RECENT PURCHASES (GLOBAL / PUBLIC)
@@ -261,4 +307,36 @@ exports.getDashboard = async () => {
       createdAt: o.createdAt
     }))
   };
+};
+
+// ✅ USER-SPECIFIC RECENT PURCHASES
+exports.getUserRecentPurchases = async (userId, limit = 10) => {
+  if (!userId) {
+    console.log("❌ NO USER ID");
+    return [];
+  }
+
+  // ✅ ADD HERE
+  console.log("REQ USER ID:", userId);
+
+  const orders = await Order.find({
+    user: userId,
+    status: 'paid'
+  })
+    .populate('product')
+    .sort({ createdAt: -1 })
+    .limit(limit);
+
+  // ✅ ADD HERE
+  console.log("ORDERS FOUND:", orders.length);
+
+  return orders
+    .filter(o => o.product)
+    .map(o => ({
+      _id: o.product._id,
+      name: o.product.name,
+      image: o.product.image,
+      price: o.product.price,
+      createdAt: o.createdAt
+    }));
 };

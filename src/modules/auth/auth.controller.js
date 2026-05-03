@@ -67,7 +67,9 @@ exports.googleLogin = async (req, res, next) => {
         name,
         email,
         googleId: sub,
-        provider: 'google'
+        provider: 'google',
+        cashbackPoints: 100,            // ✅ 1 BRL reward
+        totalCashbackEarned: 1
       });
     }
 
@@ -85,6 +87,35 @@ exports.googleLogin = async (req, res, next) => {
 
   } catch (err) {
     console.log('❌ GOOGLE LOGIN ERROR:', err.message);
+    next(err);
+  }
+};
+exports.getWallet = async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  res.json({
+    points: user.cashbackPoints,
+    balance: user.cashbackPoints / 100,
+    earned: user.totalCashbackEarned,
+    spent: user.totalCashbackSpent
+  });
+};
+exports.getMyCashback = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    res.json({
+      points: user.cashbackPoints,
+      balanceBRL: user.cashbackPoints / 100,
+      earned: user.totalCashbackEarned,
+      spent: user.totalCashbackSpent
+    });
+
+  } catch (err) {
     next(err);
   }
 };

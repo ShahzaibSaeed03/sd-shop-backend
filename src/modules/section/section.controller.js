@@ -23,7 +23,11 @@ exports.getAll = async (req, res, next) => {
 // GET FRONTEND
 exports.getFrontend = async (req, res, next) => {
   try {
-    const data = await service.getFrontendSections();
+    console.log("USER FROM TOKEN:", req.user); // 🔥 MUST ADD
+
+    const userId = req.user?._id || null;
+
+    const data = await service.getFrontendSections(userId);
     res.json(data);
   } catch (err) {
     next(err);

@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const controller = require('./order.controller');
+const optionalAuth = require('../../middlewares/optionalAuth');
+
 
 const { protect, isAdmin } = require('../auth/auth.middleware');
 
@@ -71,7 +73,7 @@ const { protect, isAdmin } = require('../auth/auth.middleware');
  *       401:
  *         description: Unauthorized
  */
-router.post('/', controller.create);
+router.post('/',optionalAuth, controller.create);
 
 /**
  * @swagger
@@ -150,4 +152,5 @@ router.post('/calculate', protect, controller.calculatePrice);
 router.get('/:id', protect, isAdmin, controller.getOne);
 // ✅ HOME SECTIONS
 router.post('/:id/retry', protect, isAdmin, controller.retry);
+router.get('/my/recent', protect, controller.getMyRecentPurchases);
 module.exports = router;

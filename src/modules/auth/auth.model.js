@@ -15,6 +15,18 @@ password: {
   type: String,
   required: false // ✅ FIX
 },
+cashbackPoints: {
+  type: Number,
+  default: 0
+},
+totalCashbackEarned: {
+  type: Number,
+  default: 0
+},
+totalCashbackSpent: {
+  type: Number,
+  default: 0
+},
 googleId: String,
 provider: {
   type: String,
@@ -26,5 +38,6 @@ provider: {
     default: 'user'
   },
 }, { timestamps: true });
+
 
 module.exports = mongoose.model('User', userSchema);

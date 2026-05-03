@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const controller = require('./section.controller');
 const { protect, isAdmin } = require('../auth/auth.middleware');
+const optionalAuth = require('../../middlewares/optionalAuth'); 
 
 // ADMIN
 router.post('/', protect, isAdmin, controller.create);
@@ -13,6 +14,5 @@ router.put('/reorder', protect, isAdmin, controller.reorder);
 router.get('/options', protect, controller.options);
 
 // FRONTEND (public)
-router.get('/frontend', controller.getFrontend);
-
+router.get('/frontend', optionalAuth, controller.getFrontend);
 module.exports = router;

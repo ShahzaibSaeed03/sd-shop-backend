@@ -18,7 +18,8 @@ exports.register = async (data) => {
     ...data,
     password: hashedPassword
   });
-
+user.cashbackPoints = 100; // = 1 BRL
+await user.save();
   return user;
 };
 

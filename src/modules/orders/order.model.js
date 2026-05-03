@@ -11,7 +11,9 @@ isGuest: {
   type: Boolean,
   default: false
 },
-
+cashbackEarned: Number,
+cashbackUsed: Number,
+cashbackPointsUsed: Number,
   email: {  // ✅ ADD THIS FIELD
     type: String,
     required: null
@@ -58,7 +60,20 @@ isGuest: {
   },
   
   userIpAddress: String,
-  
+  buyerName: {
+  type: String,
+  required: true
+},
+
+cpf: {
+  type: String,
+  required: true
+},
+
+installments: {
+  type: Number,
+  default: 1
+},
   // ✅ ORDER STATUS
   status: {
     type: String,

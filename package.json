@@ -12,8 +12,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@mercadopago/sdk-js": "^0.0.3",
     "aws-sdk": "^2.1693.0",
     "axios": "^1.15.0",
+    "axios-retry": "^4.5.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.0",

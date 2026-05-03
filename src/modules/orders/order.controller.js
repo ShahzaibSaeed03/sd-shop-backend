@@ -4,19 +4,21 @@ const service = require('./order.service');
 exports.create = async (req, res, next) => {
   try {
     console.log('📥 BODY:', req.body);
-
+    if (!req.body.cpf || !req.body.buyerName) {
+      return res.status(400).json({
+        message: 'CPF and Buyer Name required'
+      });
+    }
     const ip =
       req.headers['x-forwarded-for']?.split(',')[0] ||
       req.socket?.remoteAddress ||
       req.ip;
 
-    const userId = req.user?.id || null;
-
+    const userId = req.user?._id || null;
     // ❌ REMOVE REQUIRED EMAIL
-const email =
-  req.user?.email ||
-  req.body.email ||
-  `guest_${Date.now()}@sdshop.com`;
+    const email = req.user?.email
+      ? req.user.email
+      : `guest_${Date.now()}@sdshop.com`;
     const order = await service.createOrder(
       userId,
       req.body.productId,
@@ -24,8 +26,13 @@ const email =
       email,
       {
         ...req.body,
-        userIpAddress: ip
+        userIpAddress: ip,
+
+        buyerName: req.body.buyerName, // ✅
+        cpf: req.body.cpf,             // ✅
+        installments: req.body.installments // ✅
       }
+
     );
 
     res.status(201).json(order);
@@ -59,14 +66,27 @@ exports.getAllOrders = async (req, res, next) => {
 // ==========================
 exports.calculatePrice = async (req, res, next) => {
   try {
+    const { amount, method = 'pix' } = req.body;
 
-    const result = await service.calculatePrice(
-      req.body.productId,
-      req.body.code,
-      req.body.method
-    );
+    if (!amount) {
+      return res.status(400).json({ message: 'Amount required' });
+    }
 
-    res.json(result);
+    const basePrice = Number(amount);
+
+    let feePercent = 0;
+    if (method === 'card') feePercent = 5.4;
+    if (method === 'pix') feePercent = 1;
+
+    const fee = (basePrice * feePercent) / 100;
+    const total = basePrice + fee;
+
+    res.json({
+      basePrice,
+      fee,
+      total,
+      method
+    });
 
   } catch (err) {
     next(err);
@@ -143,6 +163,15 @@ exports.getOne = async (req, res, next) => {
 exports.getDashboard = async (req, res, next) => {
   try {
     const data = await service.getDashboard();
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getMyRecentPurchases = async (req, res, next) => {
+  try {
+    const data = await service.getUserRecentPurchases(req.user._id);
     res.json(data);
   } catch (err) {
     next(err);

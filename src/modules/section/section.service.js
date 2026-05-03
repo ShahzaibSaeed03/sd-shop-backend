@@ -1,5 +1,7 @@
 const Section = require('./section.model');
 const Category = require('../categorey/category.model'); // ✅ FIXED PATH
+const orderService = require('../orders/order.service');
+
 
 // ==========================
 // VALIDATE CATEGORIES
@@ -85,23 +87,16 @@ exports.getSections = async () => {
 // ==========================
 // GET FRONTEND
 // ==========================
-exports.getFrontendSections = async () => {
+exports.getFrontendSections = async (userId) => {
+
   const sections = await Section.find({ isActive: true })
-    .populate('categories', 'name image slug') // ✅ only required fields
+    .populate('categories', 'name image slug')
     .sort({ order: 1 })
     .lean();
 
-  return sections.map(section => ({
+  const formattedSections = sections.map(section => ({
     _id: section._id,
-
-    // ✅ SECTION NAME (CLEAN)
     name: section.name,
-
-    // optional
-    mode: section.mode,
-    apiSource: section.apiSource,
-
-    // ✅ ONLY REQUIRED CATEGORY FIELDS
     items: section.categories.map(c => ({
       _id: c._id,
       name: c.name,
@@ -109,6 +104,27 @@ exports.getFrontendSections = async () => {
       slug: c.slug
     }))
   }));
+
+  // ✅ GET USER RECENT
+  const recentItems = await orderService.getUserRecentPurchases(userId, 8);
+
+  const finalSections = [];
+
+  // ✅ ONLY ADD IF HAS DATA
+  if (recentItems && recentItems.length > 0) {
+    finalSections.push({
+      _id: 'recent-purchases',
+      name: 'Recently Purchased',
+      items: recentItems
+    });
+  }
+
+  // ✅ ADD OTHER SECTIONS
+  formattedSections.forEach(s => {
+    finalSections.push(s);
+  });
+
+  return finalSections;
 };
 
 // ==========================

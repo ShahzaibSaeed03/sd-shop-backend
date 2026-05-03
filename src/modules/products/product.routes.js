@@ -1,63 +1,30 @@
 const router = require('express').Router();
 const controller = require('./product.controller');
 const upload = require('../../middlewares/upload.middleware');
-
+const optionalAuth = require('../../middlewares/optionalAuth');
 const { protect, isAdmin } = require('../auth/auth.middleware');
 
 /**
  * ===============================
- * PUBLIC / PROTECTED ROUTES
+ * PUBLIC / OPTIONAL AUTH ROUTES
  * ===============================
  */
 router.get('/search', protect, controller.searchGames);
-
-// 🔐 Get all products (role-based: admin sees all, user sees only active)
-router.get('/', controller.getAll);
-
-// 🔐 Special sections (role-based filtering handled in service)
 router.get('/popular', protect, controller.getPopular);
 router.get('/coins', protect, controller.getCoins);
 router.get('/hot', protect, controller.getHot);
-
-// 🔐 Get single product (hide inactive for normal users)
-router.get('/:id', controller.getOne);
-
+router.get('/category/:categoryId', optionalAuth, controller.getByCategory);
+router.get('/', optionalAuth, controller.getAll);
+router.get('/:id', optionalAuth, controller.getOne);
 
 /**
  * ===============================
  * ADMIN ROUTES
  * ===============================
  */
-
-// ✅ Create product (with image upload)
-router.post(
-  '/',
-  protect,
-  isAdmin,
-  upload.single('image'),
-  controller.create
-);
-
-// ✅ Update product (includes toggle isActive)
-router.put(
-  '/:id',
-  protect,
-  isAdmin,
-  upload.single('image'), // ✅ ADD THIS
-  controller.update
-);
-
-// ✅ Delete product
-router.delete(
-  '/:id',
-  protect,
-  isAdmin,
-  controller.remove
-);
+router.post('/', protect, isAdmin, upload.single('image'), controller.create);
 router.put('/bulk-markup', protect, isAdmin, controller.bulkUpdateMarkup);
-router.get(
-  '/category/:categoryId',
+router.put('/:id', protect, isAdmin, upload.single('image'), controller.update);
+router.delete('/:id', protect, isAdmin, controller.remove);
 
-  controller.getByCategory
-);
 module.exports = router;
