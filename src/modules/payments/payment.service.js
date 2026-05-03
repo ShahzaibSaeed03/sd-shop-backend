@@ -196,9 +196,10 @@ const order = await Order.findById(payment.external_reference);
     console.log('❌ HANDLE WEBHOOK ERROR:', err.message);
   }
 };
-exports.getLogs = async (orderId) => {
-  const data = await WebhookLog.find({ orderId })
-    .sort({ createdAt: -1 });
+exports.getLogs = async () => {
+  const data = await WebhookLog.find()
+    .sort({ createdAt: -1 })
+    .limit(500); // ✅ safety limit
 
   return {
     success: true,

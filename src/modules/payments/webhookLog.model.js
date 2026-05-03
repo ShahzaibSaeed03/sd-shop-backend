@@ -9,4 +9,8 @@ const schema = new mongoose.Schema({
   headers: Object
 }, { timestamps: true });
 
+// ✅ ADD INDEX
+schema.index({ createdAt: -1 });
+schema.index({ orderId: 1 });
+
 module.exports = mongoose.model('WebhookLog', schema);
