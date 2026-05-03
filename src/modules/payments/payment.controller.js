@@ -129,19 +129,13 @@ exports.webhook = async (req, res) => {
 };
 exports.getLogs = async (req, res) => {
   try {
-
-    const result = await paymentService.getLogs(req.query);
-
-    res.json({
-      success: true,
-      ...result
-    });
-
+    const result = await paymentService.getLogs(); // ✅ no argument
+    res.json(result);
   } catch (err) {
     console.log('❌ LOG FETCH ERROR:', err.message);
     res.status(500).json({ message: err.message });
   }
-};
+}
 exports.getOrderLogs = async (req, res) => {
   try {
     const logs = await WebhookLog.find({ orderId: req.params.id })

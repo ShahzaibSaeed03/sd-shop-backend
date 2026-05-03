@@ -16,9 +16,8 @@ exports.create = async (req, res, next) => {
 
     const userId = req.user?._id || null;
     // ❌ REMOVE REQUIRED EMAIL
-    const email = req.user?.email
-      ? req.user.email
-      : `guest_${Date.now()}@sdshop.com`;
+    const email = req.user?.email || req.body.email;
+
     const order = await service.createOrder(
       userId,
       req.body.productId,

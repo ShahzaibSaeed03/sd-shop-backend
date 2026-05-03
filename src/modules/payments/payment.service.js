@@ -196,25 +196,13 @@ const order = await Order.findById(payment.external_reference);
     console.log('❌ HANDLE WEBHOOK ERROR:', err.message);
   }
 };
-exports.getLogs = async (query) => {
-
-  const page = parseInt(query.page) || 1;
-  const limit = parseInt(query.limit) || 10;
-
-  const skip = (page - 1) * limit;
-
-  const total = await WebhookLog.countDocuments();
-
-  const data = await WebhookLog.find()
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+exports.getLogs = async (orderId) => {
+  const data = await WebhookLog.find({ orderId })
+    .sort({ createdAt: -1 });
 
   return {
-    data,
-    total,
-    totalPages: Math.ceil(total / limit),
-    currentPage: page
+    success: true,
+    data
   };
 };
 exports.getLogById = async (id) => {
