@@ -11,7 +11,7 @@ const upload = multer({
 });
 
 // ✅ GET ALL
-router.get('/', protect, isAdmin, controller.getCategories);
+router.get('/',  controller.getCategories);
 
 // ✅ SEARCH
 router.get('/search', protect, isAdmin, controller.searchCategories);
