@@ -37,4 +37,11 @@ router.get('/', protect, isAdmin, controller.getAllUsers);
  */
 router.get('/:id', protect, isAdmin, controller.getUserDetails);
 
+router.patch(
+  '/:id/role',
+  protect,
+  isAdmin,
+  controller.updateUserRole
+);
+
 module.exports = router;

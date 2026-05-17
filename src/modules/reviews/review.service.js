@@ -1,103 +1,311 @@
 const Review = require('./review.model');
-
-const Product = require('../products/product.model');
 const mongoose = require('mongoose');
 
-// ⭐ update rating
-const updateProductRating = async (productId) => {
-  const stats = await Review.aggregate([
-    { $match: { product: new mongoose.Types.ObjectId(productId) } },
-    {
-      $group: {
-        _id: '$product',
-        avgRating: { $avg: '$rating' },
-        reviewCount: { $sum: 1 }
-      }
-    }
-  ]);
+// ✅ CREATE REVIEW
+exports.createReview = async (
+  userId,
+  body
+) => {
 
-  await Product.findByIdAndUpdate(productId, {
-    avgRating: stats[0]?.avgRating || 0,
-    reviewCount: stats[0]?.reviewCount || 0
-  });
-};
-
-// ✅ create review
-exports.createReview = async (userId, body) => {
-  const { productId, rating, comment } = body;
-
-  if (!productId) throw new Error('Product required');
-
-  if (rating < 1 || rating > 5) {
-    throw new Error('Rating must be between 1 and 5');
-  }
-
-  const review = await Review.create({
-    user: userId,
-    product: productId,
+  const {
+    categoryId,
     rating,
     comment
+  } = body;
+
+  if (!categoryId) {
+    throw new Error('Category required');
+  }
+
+  if (rating < 1 || rating > 5) {
+    throw new Error(
+      'Rating must be between 1 and 5'
+    );
+  }
+
+  // ✅ prevent duplicate
+  const exists =
+    await Review.findOne({
+      user: userId,
+      category: categoryId
+    });
+
+  if (exists) {
+    throw new Error(
+      'You already reviewed this category'
+    );
+  }
+
+  return await Review.create({
+
+    user: userId,
+
+    category: categoryId,
+
+    rating,
+
+    comment
+
   });
 
-  return review;
 };
 
-// ✅ get reviews
-// review.service.js
+// ✅ GET CATEGORY REVIEWS
+exports.getCategoryReviews = async (
+  categoryId
+) => {
 
+  const reviews = await Review.find({
 
-exports.getProductReviews = async (productId) => {
-  const reviews = await Review.find({ product: productId })
-    .populate('user', 'name')
-    .sort({ createdAt: -1 });
+    category: categoryId
 
-  const totalReviews = reviews.length;
+  })
+
+    .populate(
+      'user',
+      'name avatar picture'
+    )
+
+    .sort({
+      createdAt: -1
+    });
+
+  const totalReviews =
+    reviews.length;
 
   const averageRating =
     totalReviews === 0
       ? 0
-      : reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews;
+      : reviews.reduce(
+          (acc, r) =>
+            acc + r.rating,
+          0
+        ) / totalReviews;
 
   return {
-    averageRating: Number(averageRating.toFixed(1)),
+
+    averageRating: Number(
+      averageRating.toFixed(1)
+    ),
+
     totalReviews,
-    reviews
+
+    reviews: reviews.map(r => ({
+
+      _id: r._id,
+
+      user: r.user,
+
+      rating: r.rating,
+
+      comment: r.comment,
+
+      createdAt: r.createdAt,
+
+      likesCount:
+        r.likes.length,
+
+      dislikesCount:
+        r.dislikes.length,
+
+      liked: false,
+
+      disliked: false
+
+    }))
+
   };
+
 };
 
-// ✅ update review
-exports.updateReview = async (id, userId, body) => {
-  const review = await Review.findById(id);
+// ✅ UPDATE REVIEW
+exports.updateReview = async (
+  id,
+  userId,
+  body
+) => {
 
-  if (!review) throw new Error('Review not found');
+  const review =
+    await Review.findById(id);
 
-  if (review.user.toString() !== userId.toString()) {
-    throw new Error('Not authorized');
+  if (!review) {
+    throw new Error(
+      'Review not found'
+    );
   }
 
-  review.rating = body.rating ?? review.rating;
-  review.comment = body.comment ?? review.comment;
+  if (
+    review.user.toString() !==
+    userId.toString()
+  ) {
+    throw new Error(
+      'Not authorized'
+    );
+  }
+
+  review.rating =
+    body.rating ??
+    review.rating;
+
+  review.comment =
+    body.comment ??
+    review.comment;
 
   await review.save();
 
   return review;
+
 };
 
+// ✅ DELETE
+exports.deleteReview = async (
+  reviewId,
+  userId
+) => {
 
-exports.deleteReview = async (reviewId, userId) => {
-  const review = await Review.findById(reviewId);
+  const review =
+    await Review.findById(
+      reviewId
+    );
 
   if (!review) {
-    throw new Error('Review not found');
+    throw new Error(
+      'Review not found'
+    );
   }
 
-  // only owner can delete
-  if (review.user.toString() !== userId.toString()) {
-    throw new Error('Not authorized to delete this review');
+  if (
+    review.user.toString() !==
+    userId.toString()
+  ) {
+    throw new Error(
+      'Not authorized'
+    );
   }
 
-  await Review.findByIdAndDelete(reviewId);
+  await Review.findByIdAndDelete(
+    reviewId
+  );
 
-  // update product rating after delete
-  await updateProductRating(review.product);
+};
+
+// ✅ LIKE REVIEW
+exports.likeReview = async (
+  reviewId,
+  userId
+) => {
+
+  const review =
+    await Review.findById(
+      reviewId
+    );
+
+  if (!review) {
+    throw new Error(
+      'Review not found'
+    );
+  }
+
+  // remove dislike
+  review.dislikes =
+    review.dislikes.filter(
+      x =>
+        x.toString() !==
+        userId.toString()
+    );
+
+  // toggle like
+  const alreadyLiked =
+    review.likes.some(
+      x =>
+        x.toString() ===
+        userId.toString()
+    );
+
+  if (alreadyLiked) {
+
+    review.likes =
+      review.likes.filter(
+        x =>
+          x.toString() !==
+          userId.toString()
+      );
+
+  } else {
+
+    review.likes.push(userId);
+
+  }
+
+  await review.save();
+
+  return {
+    likesCount:
+      review.likes.length,
+    dislikesCount:
+      review.dislikes.length
+  };
+
+};
+
+// ✅ DISLIKE REVIEW
+exports.dislikeReview = async (
+  reviewId,
+  userId
+) => {
+
+  const review =
+    await Review.findById(
+      reviewId
+    );
+
+  if (!review) {
+    throw new Error(
+      'Review not found'
+    );
+  }
+
+  // remove like
+  review.likes =
+    review.likes.filter(
+      x =>
+        x.toString() !==
+        userId.toString()
+    );
+
+  // toggle dislike
+  const alreadyDisliked =
+    review.dislikes.some(
+      x =>
+        x.toString() ===
+        userId.toString()
+    );
+
+  if (alreadyDisliked) {
+
+    review.dislikes =
+      review.dislikes.filter(
+        x =>
+          x.toString() !==
+          userId.toString()
+      );
+
+  } else {
+
+    review.dislikes.push(userId);
+
+  }
+
+  await review.save();
+
+  return {
+
+    likesCount:
+      review.likes.length,
+
+    dislikesCount:
+      review.dislikes.length
+
+  };
+
 };

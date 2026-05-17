@@ -46,7 +46,14 @@ app.use(cors({
 /**
  * Middlewares
  */
-app.use(express.json());
+app.use(express.json({
+  limit: '50mb'
+}));
+
+app.use(express.urlencoded({
+  limit: '50mb',
+  extended: true
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
@@ -71,7 +78,21 @@ app.use('/api/users', require('./src/modules/users/user.routes'));
 app.use('/api/sections', require('./src/modules/section/section.routes'));
 app.use('/api/coupons', require('./src/modules/coupon/coupon.routes'));
 app.use('/api/categories', require('./src/modules/categorey/category.routes'));
+app.use(
+  '/api',
+  require('./src/modules/game-content/game-content.routes')
+);
+app.use(
+  '/api/supplier',
+  require('./src/modules/supplier/supplier.routes')
+);
 app.use('/api/supplier', supplierRoutes);
+app.use(
+  '/api/bundles',
+  require(
+    './src/modules/bundle-products/bundle-product.routes'
+  )
+);
 
 /**
  * Swagger Docs

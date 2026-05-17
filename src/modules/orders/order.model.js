@@ -1,80 +1,101 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
- user: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'User',
-  default: null   // ✅ allow guest
-},
 
-isGuest: {
-  type: Boolean,
-  default: false
-},
-cashbackEarned: Number,
-cashbackUsed: Number,
-cashbackPointsUsed: Number,
-  email: {  // ✅ ADD THIS FIELD
-    type: String,
-    required: null
+  // ===========================
+  // USER (logged-in or guest)
+  // ===========================
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  isGuest: {
+    type: Boolean,
+    default: false
+  },
+  email: {
+    type: String   // ❌ removed: required: null  (was incorrect anyway)
   },
 
+  // ===========================
+  // PRODUCT
+  // ===========================
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
     required: true
   },
-
-  price: {
+  quantity: {
     type: Number,
-    required: true
+    default: 1
   },
 
-  originalPrice: Number,
-  discount: Number,
+  // ===========================
+  // PRICING (full breakdown)
+  // ===========================
+  originalPrice: { type: Number },              // product.price × qty (before any discount)
+  price: { type: Number, required: true },      // final charged amount (after all discounts)
+  paymentFee: { type: Number, default: 0 },
+  totalAmount: { type: Number },                // price + paymentFee
 
+  // ===========================
+  // COUPON (backend-applied)
+  // ===========================
+  couponCode: { type: String, default: null },
+  couponDiscount: { type: Number, default: 0 },
+
+  // ===========================
+  // CASHBACK / SD COINS
+  // ===========================
+  cashbackEarned: { type: Number, default: 0 },        // BRL earned this order
+  cashbackUsed: { type: Number, default: 0 },          // BRL discount from coins
+  cashbackPointsUsed: { type: Number, default: 0 },    // raw points spent
+
+  // ===========================
+  // INFLUENCER (optional)
+  // ===========================
   influencer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Influencer'
   },
 
-  paymentId: String,
-
-  // ✅ GAME DATA
+  // ===========================
+  // GAME DATA
+  // ===========================
   userGameId: String,
   serverId: String,
   zoneId: String,
   nickname: String,
-  paymentMethod: String,
-  paymentFee: Number,
-  totalAmount: Number,
-  
-  // ✅ SUPPLIER
+
+  // ===========================
+  // PAYMENT
+  // ===========================
+  paymentMethod: {
+    type: String,
+    enum: ['card', 'pix'],
+    default: 'pix'
+  },
+  paymentId: String,
+  installments: { type: Number, default: 1 },
+  buyerName: { type: String, required: true },
+  cpf: { type: String, required: true },
+  userIpAddress: String,
+
+  // ===========================
+  // SUPPLIER (Lapak)
+  // ===========================
   supplierTid: String,
   supplierResponse: Object,
-
   supplierStatus: {
     type: String,
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
-  
-  userIpAddress: String,
-  buyerName: {
-  type: String,
-  required: true
-},
 
-cpf: {
-  type: String,
-  required: true
-},
-
-installments: {
-  type: Number,
-  default: 1
-},
-  // ✅ ORDER STATUS
+  // ===========================
+  // ORDER STATUS
+  // ===========================
   status: {
     type: String,
     enum: ['pending', 'pending_payment', 'paid', 'failed', 'cancelled', 'refunded'],
@@ -82,5 +103,13 @@ installments: {
   }
 
 }, { timestamps: true });
+
+// ===========================
+// INDEXES (optional but recommended)
+// ===========================
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ couponCode: 1 });
+orderSchema.index({ paymentId: 1 });
 
 module.exports = mongoose.model('Order', orderSchema);

@@ -372,7 +372,7 @@ exports.fetchCategories = async () => {
     const res = await api.get('/api/category', {
       headers: getAuthHeaders(),
       params: {
-        country_code: 'br'
+        country_code: 'id'
       }
     });
 
@@ -397,10 +397,30 @@ const deriveRequirementsFromForms = (forms = []) => {
 // 🔹 SYNC CATEGORIES
 exports.syncCategories = async () => {
   try {
-    // ✅ FIXED (CLIENT REQUIRED)
     const FIXED_CATEGORIES = [
+      // ✅ WUTHERING WAVES — Lapak code: WUTWVS
       {
-        code: 'HSTR',
+        code: 'WUTWVS',
+        name: 'Wuthering Waves',
+        forms: [
+          { name: 'user_id', type: 'number' },
+          {
+            name: 'additional_id',
+            type: 'option',
+            options: [
+              { value: 'SEA', name: 'SEA' },
+              { value: 'Asia', name: 'Asia' },
+              { value: 'America', name: 'America' },
+              { value: 'Europe', name: 'Europe' },
+              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
+            ]
+          }
+        ]
+      },
+
+      // ⏳ INACTIVE — Lapak BR me available nahi, future me activate karenge
+      {
+        code: 'HSR',
         name: 'Honkai Star Rail',
         forms: [
           { name: 'user_id', type: 'text' },
@@ -416,9 +436,8 @@ exports.syncCategories = async () => {
           }
         ]
       },
-
       {
-        code: 'GI',
+        code: 'GENSHIN',
         name: 'Genshin Impact',
         forms: [
           { name: 'user_id', type: 'text' },
@@ -434,7 +453,6 @@ exports.syncCategories = async () => {
           }
         ]
       },
-
       {
         code: 'ZZZ',
         name: 'Zenless Zone Zero',
@@ -451,25 +469,6 @@ exports.syncCategories = async () => {
             ]
           }
         ]
-      },
-
-      {
-        code: 'WW',
-        name: 'Wuthering Waves',
-        forms: [
-          { name: 'user_id', type: 'number' },
-          {
-            name: 'additional_id',
-            type: 'option',
-            options: [
-              { value: 'SEA', name: 'SEA' },
-              { value: 'Asia', name: 'Asia' },
-              { value: 'America', name: 'America' },
-              { value: 'Europe', name: 'Europe' },
-              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
-            ]
-          }
-        ]
       }
     ];
 
@@ -480,7 +479,7 @@ exports.syncCategories = async () => {
           $set: {
             code: c.code,
             name: c.name,
-            forms: c.forms,   // ✅ now correct
+            forms: c.forms,
             slug: slugify(c.name),
             game: c.name,
             isActive: true
@@ -490,18 +489,13 @@ exports.syncCategories = async () => {
       }
     }));
 
-    // ❌ remove all other categories
     await Category.deleteMany({
       code: { $nin: FIXED_CATEGORIES.map(c => c.code) }
     });
 
     await Category.bulkWrite(ops);
 
-    return {
-      success: true,
-      total: FIXED_CATEGORIES.length
-    };
-
+    return { success: true, total: FIXED_CATEGORIES.length };
   } catch (error) {
     console.error('❌ Sync Categories Error:', error.message);
     throw error;
@@ -510,19 +504,73 @@ exports.syncCategories = async () => {
 // 🔹 FETCH PRODUCTS
 exports.fetchProducts = async () => {
   try {
-    const res = await api.get('/api/all-products', {
-      headers: getAuthHeaders(),
-      params: {
-        country_code: 'br'
+
+    // ✅ All supported regions
+    const regions = ['id', 'my', 'ph', 'th', 'us', 'br', 'vn'];
+
+    let allProducts = [];
+
+    for (const region of regions) {
+
+      try {
+
+        console.log(`🌍 Fetching region: ${region}`);
+
+        const res = await api.get('/api/all-products', {
+          headers: getAuthHeaders(),
+          params: {
+            country_code: region
+          }
+        });
+
+        const products = res.data?.data?.products || [];
+
+        console.log(`✅ ${region.toUpperCase()} => ${products.length} products`);
+
+        // tag region
+        products.forEach(p => {
+          p._region = region;
+        });
+
+        allProducts.push(...products);
+
+      } catch (err) {
+
+        console.log(`❌ ${region.toUpperCase()} failed: ${err.message}`);
+
       }
+    }
+
+    // ✅ Remove exact duplicates
+    const seen = new Set();
+
+    const uniqueProducts = allProducts.filter(p => {
+
+      const key = p.code;
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+
+      return true;
+
     });
 
-    console.log('📦 FULL RESPONSE:', res.data);
+    console.log('═══════════════════════════════');
+    console.log(`📦 FINAL UNIQUE PRODUCTS: ${uniqueProducts.length}`);
+    console.log('═══════════════════════════════');
 
-    return res.data?.data?.products || []; // ✅ FIX HERE
+    return uniqueProducts;
 
   } catch (error) {
-    console.error('❌ Fetch Products Error:', error.response?.data || error.message);
+
+    console.error(
+      '❌ Fetch Products Error:',
+      error.response?.data || error.message
+    );
+
     throw error;
   }
 };
@@ -533,97 +581,340 @@ const IDR_TO_BRL = 0.00029;
 
 exports.syncProducts = async () => {
   try {
+    console.log('═══════════════════════════════════════');
+    console.log('🚀 SYNC STARTED');
+    console.log('═══════════════════════════════════════');
+
     const products = await exports.fetchProducts();
+
 
     const categories = await Category.find({});
     const categoryMap = {};
+
     categories.forEach(c => {
+
       categoryMap[c.code] = c;
+
+      // ✅ HSR aliases
+      if (c.code === 'HSR') {
+        categoryMap['HSTR'] = c;
+        categoryMap['HSTRLOG'] = c;
+        categoryMap['HSTRUS'] = c;
+        categoryMap['HSTRVGP'] = c;
+      }
+
+      // ✅ GENSHIN aliases
+      if (c.code === 'GENSHIN') {
+        categoryMap['GI'] = c;
+        categoryMap['GILOG'] = c;
+        categoryMap['GIUS'] = c;
+        categoryMap['GIVGP'] = c;
+      }
+
+      // ✅ ZZZ aliases
+      if (c.code === 'ZZZ') {
+        categoryMap['ZZZUS'] = c;
+      }
+
     });
 
-    // ✅ CLIENT FIXED PRODUCTS
     const FIXED_PRODUCTS = [
-      // ---------------- HSR ----------------
-      { code: 'HSTRESP-S117-br', name: 'Express Supply Pass', game: 'HSTR' },
-      { code: 'HSTR60-S116-br', name: '60 Oneiric Shard', game: 'HSTR' },
-      { code: 'HSTR300-S117-br', name: '300 + 30 Oneiric Shard', game: 'HSTR' },
-      { code: 'HSTR980-S117-br', name: '980 + 110 Oneiric Shard', game: 'HSTR' },
-      { code: 'HSTR1980-S117-br', name: '1980 + 260 Oneiric Shard', game: 'HSTR' },
-      { code: 'HSTR3280-S116-br', name: '3280 + 600 Oneiric Shard', game: 'HSTR' },
-      { code: 'HSTR6480-S116-br', name: '6480 + 1600 Oneiric Shard', game: 'HSTR' },
 
-      // ---------------- GI ----------------
-      { code: 'GIWELKIN-S113-br', name: 'Blessing Welkin Moon', game: 'GI' },
-      { code: 'GI60-S113-br', name: '60 Crystals', game: 'GI' },
-      { code: 'GI330-S113-br', name: '300 + 30 Crystals', game: 'GI' },
-      { code: 'GI1090-S113-br', name: '980 + 110 Crystals', game: 'GI' },
-      { code: 'GI2240-S113-br', name: '1980 + 260 Crystals', game: 'GI' },
-      { code: 'GI3940-S27-br', name: '3280 + 600 Crystals', game: 'GI' },
-      { code: 'GI8080-S113-br', name: '6480 + 1600 Crystals', game: 'GI' },
+      // ---------------- HSR ----------------
+      {
+        groupCode: 'HSTRESP',
+        name: 'Express Supply Pass',
+        game: 'HSTR'
+      },
+      {
+        groupCode: 'HSTRLOG60',
+        name: '60 Oneiric Shard',
+        game: 'HSTRLOG'
+      },
+      {
+        groupCode: 'HSTRLOG300',
+        name: '300 Oneiric Shard + Bonus',
+        game: 'HSTRLOG'
+      },
+      {
+        groupCode: 'HSTRLOG980',
+        name: '980 Oneiric Shard + Bonus',
+        game: 'HSTRLOG'
+      },
+      {
+        groupCode: 'HSTRLOG1980',
+        name: '1980 Oneiric Shard + Bonus',
+        game: 'HSTRLOG'
+      },
+      {
+        groupCode: 'HSTRLOG3280',
+        name: '3280 Oneiric Shard + Bonus',
+        game: 'HSTRLOG'
+      },
+      {
+        groupCode: 'HSTRLOG6480',
+        name: '6480 Oneiric Shard + Bonus',
+        game: 'HSTRLOG'
+      },
+
+      // ---------------- GENSHIN ----------------
+      // ---------------- GENSHIN ----------------
+      {
+        groupCode: 'GIWELKINB2BUS',
+        name: 'Blessing Welkin Moon',
+        game: 'GIUS'
+      },
+      {
+        groupCode: 'GI60B2BUS',
+        name: '60 Crystals',
+        game: 'GIUS'
+      },
+      {
+        groupCode: 'GI330B2BUS',
+        name: '300 + 30 Crystals',
+        game: 'GIUS'
+      },
+      {
+        groupCode: 'GI1090B2BUS',
+        name: '980 + 110 Crystals',
+        game: 'GIUS'
+      },
+      {
+        groupCode: 'GI2240B2BUS',
+        name: '1980 + 260 Crystals',
+        game: 'GIUS'
+      },
+      {
+        groupCode: 'GI3940B2BUS',
+        name: '3280 + 600 Crystals',
+        game: 'GIUS'
+      },
+      {
+        groupCode: 'GI8080B2BUS',
+        name: '6480 + 1600 Crystals',
+        game: 'GIUS'
+      },
 
       // ---------------- ZZZ ----------------
-      { code: 'ZZZPASS-S1-br', name: 'Inter-Knot Membership', game: 'ZZZ' },
-      { code: 'ZZZ60-S1-br', name: '60 Monochrome', game: 'ZZZ' },
-      { code: 'ZZZ300-S116-br', name: '300 + 30 Monochrome', game: 'ZZZ' },
-      { code: 'ZZZ980-S117-br', name: '980 + 110 Monochrome', game: 'ZZZ' },
-      { code: 'ZZZ1980-S116-br', name: '1980 + 260 Monochrome', game: 'ZZZ' },
-      { code: 'ZZZ3280-S117-br', name: '3280 + 600 Monochrome', game: 'ZZZ' },
-      { code: 'ZZZ6480-S116-br', name: '6480 + 1600 Monochrome', game: 'ZZZ' },
+      {
+        groupCode: 'ZZZPASS',
+        name: 'Inter-Knot Membership',
+        game: 'ZZZ'
+      },
+      {
+        groupCode: 'ZZZ60B2BUS',
+        name: '60 Monochrome',
+        game: 'ZZZUS'
+      },
+      {
+        groupCode: 'ZZZ300B2BUS',
+        name: '300 + 30 Monochrome',
+        game: 'ZZZUS'
+      },
+      {
+        groupCode: 'ZZZ980B2BUS',
+        name: '980+110 Monochrome',
+        game: 'ZZZUS'
+      },
+      {
+        groupCode: 'ZZZ1980B2BUS',
+        name: '1980+260 Monochrome',
+        game: 'ZZZUS'
+      },
+      {
+        groupCode: 'ZZZ3280B2BUS',
+        name: '3280+600 Monochrome',
+        game: 'ZZZUS'
+      },
+      {
+        groupCode: 'ZZZ6480B2BUS',
+        name: '6480+1600 Monochrome',
+        game: 'ZZZUS'
+      },
 
-      // ---------------- WW (CLIENT PROVIDED) ----------------
-      { code: 'WUTWVSLS1-S96A', name: 'Lunite Subscription', game: 'WW' },
-      { code: 'WUTWVS60-S96A', name: '60 Lunites', game: 'WW' },
-      { code: 'WUTWVS300-S96A', name: '300 Lunites', game: 'WW' },
-      { code: 'WUTWVS980-S96A', name: '980 Lunites', game: 'WW' },
-      { code: 'WUTWVS1980-S96A', name: '1980 Lunites', game: 'WW' },
-      { code: 'WUTWVS3280-S19', name: '3280 Lunites', game: 'WW' },
-      { code: 'WUTWVS6480-S19', name: '6480 Lunites', game: 'WW' }
+      // ---------------- WW ----------------
+      {
+        groupCode: 'WUTWVSLS1',
+        name: 'Lunite Subscription',
+        game: 'WUTWVS'
+      },
+      {
+        groupCode: 'WUTWVS60',
+        name: '60 Lunites',
+        game: 'WUTWVS'
+      },
+      {
+        groupCode: 'WUTWVS300',
+        name: '300 Lunites',
+        game: 'WUTWVS'
+      },
+      {
+        groupCode: 'WUTWVS980',
+        name: '980 Lunites',
+        game: 'WUTWVS'
+      },
+      {
+        groupCode: 'WUTWVS1980',
+        name: '1980 Lunites',
+        game: 'WUTWVS'
+      },
+      {
+        groupCode: 'WUTWVS3280',
+        name: '3280 Lunites',
+        game: 'WUTWVS'
+      },
+      {
+        groupCode: 'WUTWVS6480',
+        name: '6480 Lunites',
+        game: 'WUTWVS'
+      }
+
     ];
 
-    // ✅ MATCH FROM SUPPLIER RESPONSE
-    const finalProducts = FIXED_PRODUCTS.map(fp => {
-      const found = products.find(p => p.code === fp.code);
+    const stats = {
+      total: FIXED_PRODUCTS.length,
+      matched: 0,
+      missing: 0,
+      missingNames: [],
+      totalSavings: 0,
+      created: 0,
+      updated: 0
+    };
 
-      return {
-        ...fp,
-        price: found?.price || 0,
-        supplierCategory: found?.category_code || fp.game
+    const ops = [];
+
+    for (const fp of FIXED_PRODUCTS) {
+
+      const allProviders = products.filter(p =>
+        p.group_product_code === fp.groupCode &&
+        p.category_code === fp.game &&
+        p.price > 0
+      );
+
+      if (allProviders.length === 0) {
+
+        stats.missing++;
+        stats.missingNames.push(fp.name);
+
+        console.log(`❌ ${fp.name} → no providers`);
+
+        // ✅ mark unavailable in DB
+        await Product.findOneAndUpdate(
+          {
+            supplierCategory: fp.game,
+            name: fp.name
+          },
+          {
+            isSupplierAvailable: false
+          }
+        );
+
+        continue;
+      }
+
+      // ✅ OUTLIER FILTER — drop providers priced way above median (fake placeholder prices)
+      allProviders.sort((a, b) => a.price - b.price);
+      const prices = allProviders.map(p => p.price);
+      const median = prices[Math.floor(prices.length / 2)];
+      const providers = allProviders.filter(p => p.price <= median * 3);
+
+      if (providers.length === 0) {
+        stats.missing++;
+        stats.missingNames.push(fp.name);
+        console.log(`⚠️  ${fp.name} → all outliers, skipped`);
+        continue;
+      }
+
+      const cheapest = providers[0];
+      const mostExpensive = providers[providers.length - 1];
+
+      const savedBRL = (mostExpensive.price - cheapest.price) * IDR_TO_BRL;
+      stats.totalSavings += savedBRL;
+      stats.matched++;
+
+      const brlPrice = Math.max(1, Math.ceil(cheapest.price * IDR_TO_BRL));
+
+
+
+      const allProvidersData = providers.map(p => ({
+        code: p.provider_code,
+        fullCode: p.code,
+        price: p.price,
+        converted: parseFloat((p.price * IDR_TO_BRL).toFixed(2)),
+        status: p.status
+      }));
+
+      const category = categoryMap[fp.game];
+
+      // 🔑 Filter: match by group_product_code + game (so suppliers can change, product stays)
+      // NOT by supplierId — because cheapest provider may change between syncs
+      const productFilter = {
+        supplierCategory: fp.game,
+        name: fp.name
       };
-    });
 
-    // ✅ SAVE
-    const ops = finalProducts.map(p => {
-      const category = categoryMap[p.game];
-
-      return {
+      ops.push({
         updateOne: {
-          filter: { supplierId: p.code }, // 🔑 unique key
+          filter: productFilter,
           update: {
-            name: p.name,
-            displayName: p.name,
-
-            supplierId: p.code,
-            supplierCategory: p.supplierCategory,
-
-            price: Math.max(1, Math.ceil(p.price * 0.00029)),
-
-            category: category?._id,
-            categoryName: category?.name,
-
-            isActive: true
+            // 🔄 $set — sirf SYNC fields (admin's customizations untouched)
+            $set: {
+              supplierId: cheapest.code,
+              supplierCategory: fp.game,
+              providerCode: cheapest.provider_code,
+              supplierPriceRaw: cheapest.price,
+              allProviders: allProvidersData,
+              price: brlPrice,
+              category: category?._id,
+              categoryName: category?.name,
+              lastSyncedAt: new Date(),
+              isSupplierAvailable: true,
+            },
+            // 🆕 $setOnInsert — sirf naye product ke liye (existing untouched)
+            $setOnInsert: {
+              name: fp.name,
+              displayName: fp.name,  // pehli baar default — admin baad me change kar sake
+              isActive: true,
+              featured: false,
+              markup: 0,
+              requiresUserId: true,
+              requiresServer: true,
+              requiresZone: false,
+              requiresNickname: false
+            }
           },
           upsert: true
         }
-      };
-    });
+      });
+    }
 
-    await Product.bulkWrite(ops);
+    if (ops.length > 0) {
+      const result = await Product.bulkWrite(ops);
+      stats.created = result.upsertedCount || 0;
+      stats.updated = result.modifiedCount || 0;
+    }
 
+    console.log('\n════════ SYNC SUMMARY ════════');
 
+    console.log(`✅ Synced: ${stats.matched}`);
+    console.log(`❌ Missing: ${stats.missing}`);
+
+    if (stats.missingNames.length) {
+
+      console.log('\nUnavailable Products:\n');
+
+      stats.missingNames.forEach(name => {
+        console.log(`- ${name}`);
+      });
+
+    }
+
+    console.log('\n══════════════════════════════\n');
 
     return {
       success: true,
-      total: finalProducts.length
+      ...stats,
+      totalSavings: parseFloat(stats.totalSavings.toFixed(2))
     };
 
   } catch (error) {
@@ -658,7 +949,7 @@ exports.checkUserId = async ({ categoryCode, userId, serverId, nickname }) => {
     const res = await api.post('/api/uid-check', null, {
       headers: {
         Authorization: `Bearer ${API_KEY}`,
-        'X-COUNTRY': 'br'
+        'X-COUNTRY': 'id'
       },
       params
     });
@@ -705,8 +996,7 @@ exports.createOrder = async (order, product) => {
     // ✅ FINAL CORRECT PAYLOAD (JSON)
     const payload = {
       product_code: product.supplierId,
-      count_order: 1, // ✅ REQUIRED
-
+      count_order: product.bundleQuantity || 1,
       partner_reference_id: order._id.toString(),
       end_user_ip_address: ip,
 
@@ -730,7 +1020,7 @@ exports.createOrder = async (order, product) => {
     const res = await api.post('/api/order', payload, {
       headers: {
         Authorization: `Bearer ${API_KEY}`,
-        'X-COUNTRY': 'br',
+        'X-COUNTRY': 'id',
         'Content-Type': 'application/json',
         Accept: 'application/json'
       }

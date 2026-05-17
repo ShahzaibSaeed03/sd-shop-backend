@@ -202,3 +202,33 @@ exports.getByCategory = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getByCategorySlug = async (
+  req,
+  res,
+  next
+) => {
+
+  try {
+
+    const data =
+      await service.getProductsByCategorySlug(
+        req.params.slug,
+        req.user
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        message: 'Category not found'
+      });
+    }
+
+    res.json(data);
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};

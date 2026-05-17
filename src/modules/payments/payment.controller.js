@@ -2,7 +2,7 @@ const Order = require('../orders/order.model');
 const paymentService = require('./payment.service');
 const WebhookLog = require('./webhookLog.model');
 const axios = require('axios');
-
+const orderService = require('../orders/order.service');
 
 exports.create = async (req, res, next) => {
   try {
@@ -93,20 +93,28 @@ exports.webhook = async (req, res) => {
       }
 
       // ✅ UPDATE ORDER STATUS
-      if (payment.status === 'approved') {
-        order.status = 'paid';
+    if (payment.status === 'approved') {
 
-        // ✅ CALL SUPPLIER
-        const supplierService = require('../supplier/supplier.service');
+  // ✅ IMPORTANT
+  await orderService.updateOrderStatus(order._id, 'paid');
 
-        if (!order.supplierStatus || order.supplierStatus === 'pending') {
-          console.log('🚀 CALLING SUPPLIER...');
-          await supplierService.createOrder(order, order.product);
-          order.supplierStatus = 'processing';
-        }
+  // refresh order
+  order = await Order.findById(order._id).populate('product');
 
-        await order.save();
-      }
+  // ✅ CALL SUPPLIER
+  const supplierService = require('../supplier/supplier.service');
+
+  if (!order.supplierStatus || order.supplierStatus === 'pending') {
+
+    console.log('🚀 CALLING SUPPLIER...');
+
+    await supplierService.createOrder(order, order.product);
+
+    order.supplierStatus = 'processing';
+
+    await order.save();
+  }
+}
 
       if (payment.status === 'rejected') {
         order.status = 'failed';

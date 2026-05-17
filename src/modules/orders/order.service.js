@@ -18,48 +18,98 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     const product = await Product.findById(productId);
     if (!product) throw new Error('Product not found');
 
+    // ✅ Step 1: Base price = product price × qty
+    const qty =
+      product.isBundle
+        ? (product.bundleQuantity || 1)
+        : (Number(gameData.qty) || 1); let finalPrice = Number((product.price * qty).toFixed(2));
+    let couponDiscount = 0;
+    let appliedCouponCode = null;
 
-let finalPrice = Number(Number(gameData.amount).toFixed(2));
     // ==========================
-    // ✅ USE CASHBACK (optional)
+    // ✅ Step 2: APPLY COUPON (backend is source of truth)
+    // ==========================
+    if (code) {
+      try {
+        const couponResult = await influencerService.applyCode(code, finalPrice);
+        couponDiscount = finalPrice - couponResult.finalPrice;
+        finalPrice = couponResult.finalPrice;
+        appliedCouponCode = code;
+
+        console.log('🎟️ COUPON APPLIED:', {
+          code,
+          originalPrice: product.price * qty,
+          discount: couponDiscount,
+          afterCoupon: finalPrice
+        });
+      } catch (err) {
+        console.log('❌ Invalid coupon ignored:', err.message);
+        // Coupon invalid → ignore, charge full price
+        // Optional: throw new Error('Invalid coupon');
+      }
+    }
+
+    // ==========================
+    // ✅ Step 3: APPLY CASHBACK (coins)
     // ==========================
     let cashbackUsed = 0;
     let cashbackPointsUsed = 0;
 
-    if (userId && gameData.useCashback) {
+    if (userId && gameData.useCoins && gameData.coinsUsed > 0) {
       const user = await User.findById(userId);
+      const requestedPoints = Number(gameData.coinsUsed || 0);
+      const availablePoints = Math.floor(user.cashbackPoints || 0);
+      const usablePoints = Math.min(requestedPoints, availablePoints);
 
-      const availablePoints = Math.floor(user.cashbackPoints);
-      const availableBRL = availablePoints / 100;
+      cashbackPointsUsed = usablePoints;
+      cashbackUsed = usablePoints / 100;
+      finalPrice = Math.max(0, finalPrice - cashbackUsed);
 
-      cashbackUsed = Math.min(availableBRL, finalPrice);
-      cashbackPointsUsed = Math.floor(cashbackUsed * 100);
-      finalPrice -= cashbackUsed;
-
-      user.cashbackPoints -= cashbackPointsUsed;
-      user.totalCashbackSpent += cashbackUsed;
-
+      user.cashbackPoints -= usablePoints;
+      user.totalCashbackSpent = (user.totalCashbackSpent || 0) + cashbackUsed;
       await user.save();
+
+      console.log('💰 CASHBACK USED:', {
+        usedPoints: usablePoints,
+        usedBRL: cashbackUsed,
+        remaining: user.cashbackPoints
+      });
     }
 
     // ==========================
-    // ✅ CALCULATE CASHBACK (EARN)
+    // ✅ Step 4: CASHBACK TO EARN (1% reward)
     // ==========================
-    const cashbackPercent = 1; // later dynamic
+    const cashbackPercent = 1;
     const cashbackValue = (finalPrice * cashbackPercent) / 100;
     const paymentMethod = gameData.method || 'pix';
-const totalAmount = Number(finalPrice.toFixed(2));
-    const feeAmount = 0; 
+    const totalAmount = Number(finalPrice.toFixed(2));
+    const feeAmount = 0;
 
+    // ==========================
+    // ✅ Step 5: CREATE ORDER
+    // ==========================
     const order = await Order.create({
       user: userId || null,
       isGuest: !userId,
 
+      // Coupon info
+      couponCode: appliedCouponCode,
+      couponDiscount,
+
+      // Cashback info
+      cashbackEarned: cashbackValue,
+      cashbackUsed,
+      cashbackPointsUsed,
+
       email,
-      buyerName: gameData.buyerName, 
-      cpf: gameData.cpf,            
-      installments: gameData.installments || 1, 
+      buyerName: gameData.buyerName,
+      cpf: gameData.cpf,
+      installments: gameData.installments || 1,
       product: productId,
+      quantity: qty,
+
+      // Pricing
+      originalPrice: product.price * qty,
       price: finalPrice,
       paymentFee: feeAmount,
       totalAmount: totalAmount,
@@ -78,9 +128,10 @@ const totalAmount = Number(finalPrice.toFixed(2));
 
     console.log("✅ Order created:", {
       id: order._id,
-      email: order.email,
-      userGameId: order.userGameId,
-      serverId: order.serverId
+      original: product.price * qty,
+      couponDiscount,
+      cashbackUsed,
+      finalPrice: totalAmount
     });
 
     // Create payment
@@ -88,17 +139,16 @@ const totalAmount = Number(finalPrice.toFixed(2));
       amount: totalAmount,
       method: paymentMethod,
       token: gameData.token,
-      email, // ✅ MUST
-      buyerName: gameData.buyerName, // ✅ MUST
-      cpf: gameData.cpf,             // ✅ MUST
+      email,
+      buyerName: gameData.buyerName,
+      cpf: gameData.cpf,
       installments: gameData.installments,
-        bin: gameData.bin, // 🔥 MUST ADD
-  fullCardNumber: gameData.fullCardNumber,
-  cvv: gameData.cvv,
-  expiryMonth: gameData.expiryMonth,
-  expiryYear: gameData.expiryYear,
-  orderId: order._id.toString()
-
+      bin: gameData.bin,
+      fullCardNumber: gameData.fullCardNumber,
+      cvv: gameData.cvv,
+      expiryMonth: gameData.expiryMonth,
+      expiryYear: gameData.expiryYear,
+      orderId: order._id.toString()
     });
 
     order.paymentId = payment.id;

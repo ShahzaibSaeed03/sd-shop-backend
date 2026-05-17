@@ -1,16 +1,19 @@
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema({
+
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
 
-  product: {
+  // ✅ CATEGORY REVIEW
+  category: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
+    ref: 'Category',
+    required: true,
+    index: true
   },
 
   rating: {
@@ -21,12 +24,41 @@ const reviewSchema = new mongoose.Schema({
   },
 
   comment: {
-    type: String
+    type: String,
+    default: ''
+  },
+
+  // ✅ LIKE / DISLIKE
+  likes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  ],
+
+  dislikes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  ]
+
+}, {
+  timestamps: true
+});
+
+// ✅ ONE REVIEW PER USER PER CATEGORY
+reviewSchema.index(
+  {
+    user: 1,
+    category: 1
+  },
+  {
+    unique: true
   }
+);
 
-}, { timestamps: true });
-
-// Prevent duplicate review
-reviewSchema.index({ user: 1, product: 1 }, { unique: true });
-
-module.exports = mongoose.model('Review', reviewSchema);
+module.exports = mongoose.model(
+  'Review',
+  reviewSchema
+);

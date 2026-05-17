@@ -15,6 +15,11 @@ router.get('/coins', protect, controller.getCoins);
 router.get('/hot', protect, controller.getHot);
 router.get('/category/:categoryId', optionalAuth, controller.getByCategory);
 router.get('/', optionalAuth, controller.getAll);
+router.get(
+    '/category-slug/:slug',
+    optionalAuth,
+    controller.getByCategorySlug
+);
 router.get('/:id', optionalAuth, controller.getOne);
 
 /**

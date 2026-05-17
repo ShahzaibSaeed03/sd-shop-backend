@@ -17,3 +17,25 @@ exports.getUserDetails = async (req, res, next) => {
     next(err);
   }
 };
+exports.updateUserRole = async (
+  req,
+  res,
+  next
+) => {
+  try {
+
+    const user =
+      await service.updateUserRole(
+        req.params.id,
+        req.body.role
+      );
+
+    res.json({
+      success: true,
+      data: user
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};

@@ -1,5 +1,8 @@
 const Product = require('./product.model');
 const mongoose = require('mongoose');
+const Category = require('../categorey/category.model');
+const Review = require('../reviews/review.model');
+
 
 
 // ✅ CREATE
@@ -205,4 +208,231 @@ exports.getProductsByCategory = async (categoryId, user) => {
     total: filtered.length,
     data: filtered
   };
+};
+
+
+
+exports.getProductsByCategorySlug = async (
+  slug,
+  user
+) => {
+
+  // =========================
+  // CATEGORY
+  // =========================
+
+  const category = await Category.findOne({
+    slug,
+    isActive: true
+  });
+
+  if (!category) {
+    return null;
+  }
+
+  // =========================
+  // PRODUCT FILTER
+  // =========================
+
+  const matchStage = {
+    category: category._id
+  };
+
+  // ✅ normal users only active
+  if (user?.role !== 'admin') {
+    matchStage.isActive = true;
+  }
+
+  // =========================
+  // PRODUCTS
+  // =========================
+
+  const products = await Product.aggregate([
+
+    {
+      $match: matchStage
+    },
+
+    // ✅ CATEGORY
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'category',
+        foreignField: '_id',
+        as: 'category'
+      }
+    },
+
+    {
+      $unwind: '$category'
+    },
+
+    // ✅ CATEGORY REVIEWS
+    {
+      $lookup: {
+        from: 'reviews',
+        let: {
+          categoryId: '$category._id'
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [
+                  '$category',
+                  '$$categoryId'
+                ]
+              }
+            }
+          }
+        ],
+        as: 'reviews'
+      }
+    },
+
+    // ✅ PAID ORDERS
+    {
+      $lookup: {
+        from: 'orders',
+        let: {
+          productId: '$_id'
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [
+                  '$product',
+                  '$$productId'
+                ]
+              },
+              paymentStatus: 'paid'
+            }
+          }
+        ],
+        as: 'paidOrders'
+      }
+    },
+
+    // ✅ CALCULATIONS
+    {
+      $addFields: {
+
+        reviewCount: {
+          $size: '$reviews'
+        },
+
+        rating: {
+          $cond: [
+            {
+              $gt: [
+                { $size: '$reviews' },
+                0
+              ]
+            },
+            {
+              $avg: '$reviews.rating'
+            },
+            0
+          ]
+        },
+
+        sold: {
+          $size: '$paidOrders'
+        }
+
+      }
+    },
+
+    // ✅ CLEAN
+    {
+      $project: {
+        reviews: 0,
+        paidOrders: 0
+      }
+    },
+
+    // ✅ SORT
+    {
+      $sort: {
+        createdAt: -1
+      }
+    }
+
+  ]);
+
+  // =========================
+  // CATEGORY REVIEW STATS
+  // =========================
+
+  const categoryReviews =
+    await Review.find({
+      category: category._id
+    });
+
+  const totalReviews =
+    categoryReviews.length;
+
+  const avgRating =
+    totalReviews > 0
+      ? (
+          categoryReviews.reduce(
+            (acc, r) => acc + r.rating,
+            0
+          ) / totalReviews
+        ).toFixed(1)
+      : 0;
+
+  // =========================
+  // CATEGORY SOLD
+  // =========================
+
+  const totalSold =
+    products.reduce(
+      (acc, p) => acc + (p.sold || 0),
+      0
+    );
+
+  // =========================
+  // RESPONSE
+  // =========================
+
+  return {
+
+    success: true,
+
+    category: {
+
+      _id: category._id,
+
+      name: category.name,
+
+      slug: category.slug,
+
+      image: category.image,
+
+      code: category.code,
+
+      game: category.game,
+
+      forms: category.forms,
+
+      gameInformation:
+        category.gameInformation,
+
+      // ✅ STATS
+      sold: totalSold,
+
+      totalReviews,
+
+      rating: Number(avgRating)
+
+    },
+
+    total: products.length,
+
+    data: products
+
+  };
+
 };
