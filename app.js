@@ -20,7 +20,8 @@ const allowedOrigins = [
   'https://sdshop.gg',
   'https://admin.sdshop.gg',
   'http://localhost:4200',
-  'https://localhost:4200'
+  'https://localhost:4200',
+  'https://home.sdshop.gg',
 
 ];
 
