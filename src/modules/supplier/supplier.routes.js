@@ -18,4 +18,5 @@ router.get(
     isAdmin,
     controller.fullSync
 );
+router.get('/sync-history', protect, isAdmin, controller.getSyncHistory);
 module.exports = router;

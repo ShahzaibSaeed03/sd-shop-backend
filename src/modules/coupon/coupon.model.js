@@ -17,11 +17,11 @@ const couponSchema = new mongoose.Schema({
   },
   value: { type: Number, required: true },
 
-applyMode: {
-  type: String,
-  enum: ['global', 'specific'],
-  default: 'global'
-},
+  applyMode: {
+    type: String,
+    enum: ['global', 'specific'],
+    default: 'global'
+  },
 
   products: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -32,9 +32,10 @@ applyMode: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category'
   }],
-affiliateName: String,
+  affiliateName: String,
 
-affiliateSlug: String,
+  affiliateSlug: String,
+  generatedLink: String,
   minOrderAmount: { type: Number, default: 0 },
   maxDiscount: { type: Number },
 

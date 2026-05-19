@@ -1,6 +1,10 @@
-// supplier.controller.js
 const service = require('./supplier.service');
-const Product = require('../products/product.model'); 
+const Product = require('../products/product.model');
+const SyncLog = require('./sync-log.model');
+
+// ============================
+// SYNC PRODUCTS
+// ============================
 exports.syncProducts = async (req, res, next) => {
   try {
     const result = await service.syncProducts();
@@ -10,15 +14,75 @@ exports.syncProducts = async (req, res, next) => {
   }
 };
 
-// supplier.controller.js
+// ============================
+// FULL SYNC (with history save)
+// ============================
+exports.fullSync = async (req, res, next) => {
+  try {
+    const start = Date.now();
 
+    const categoryResult = await service.syncCategories();
+    const productResult = await service.syncProducts();
+
+    const end = Date.now();
+
+    const syncData = {
+      executionTime: `${((end - start) / 1000).toFixed(2)}s`,
+      categories: {
+        synced: categoryResult.total || 0
+      },
+      products: {
+        total: productResult.total || 0,
+        matched: productResult.matched || 0,
+        created: productResult.created || 0,
+        updated: productResult.updated || 0,
+        missing: productResult.missing || 0,
+        missingNames: productResult.missingNames || [],
+        totalSavings: productResult.totalSavings || 0
+      },
+      status: 'success'
+    };
+
+    // ✅ DB mein save karo
+    await SyncLog.create(syncData);
+
+    res.json({ success: true, ...syncData });
+
+  } catch (err) {
+    await SyncLog.create({ status: 'failed' }).catch(() => {});
+    next(err);
+  }
+};
+
+// ============================
+// SYNC HISTORY
+// ============================
+exports.getSyncHistory = async (req, res, next) => {
+  try {
+    const logs = await SyncLog.find()
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    res.json({ success: true, data: logs });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ============================
+// CLEANUP STALE
+// ============================
 exports.cleanupStale = async (req, res, next) => {
   try {
-    // Safety check — query me ?confirm=yes chahiye
+    const VALID_CATEGORIES = [
+      'WUTWVS', 'HSR', 'HSTR', 'HSTRLOG', 'HSTRUS', 'HSTRVGP',
+      'GENSHIN', 'GI', 'GILOG', 'GIUS', 'GIVGP',
+      'ZZZ', 'ZZZUS'
+    ];
+
     if (req.query.confirm !== 'yes') {
-      // Pehle preview do — kya delete hone wala hai
       const stale = await Product.find({
-        supplierCategory: { $nin: ['WUTWVS'] }
+        supplierCategory: { $nin: VALID_CATEGORIES }
       }).select('name supplierCategory price image markup').lean();
 
       return res.json({
@@ -35,9 +99,8 @@ exports.cleanupStale = async (req, res, next) => {
       });
     }
 
-    // Actually delete
     const result = await Product.deleteMany({
-      supplierCategory: { $nin: ['WUTWVS'] }
+      supplierCategory: { $nin: VALID_CATEGORIES }
     });
 
     res.json({
@@ -45,11 +108,15 @@ exports.cleanupStale = async (req, res, next) => {
       deleted: result.deletedCount,
       message: `Removed ${result.deletedCount} stale products`
     });
+
   } catch (err) {
     next(err);
   }
 };
-// supplier.controller.js
+
+// ============================
+// CHECK USER ID
+// ============================
 exports.checkUserId = async (req, res, next) => {
   try {
     const { categoryCode, userId, serverId, nickname } = req.body;
@@ -74,15 +141,18 @@ exports.checkUserId = async (req, res, next) => {
     next(err);
   }
 };
+
+// ============================
+// GET CATEGORIES
+// ============================
 exports.getCategories = async (req, res, next) => {
   try {
     const categories = await service.fetchCategories();
 
-    // Optional: format response cleanly
     const formatted = categories.map(c => ({
       code: c.code,
       name: c.name,
-      game: c.name, // ✅ simple fix
+      game: c.name,
       hasServer: c.servers?.length > 0,
       forms: c.forms || [],
       isActive: c.check_id === 'active'
@@ -91,8 +161,7 @@ exports.getCategories = async (req, res, next) => {
     res.json({
       success: true,
       total: formatted.length,
-      data: formatted,
-      
+      data: formatted
     });
 
   } catch (err) {
@@ -100,6 +169,9 @@ exports.getCategories = async (req, res, next) => {
   }
 };
 
+// ============================
+// SYNC CATEGORIES
+// ============================
 exports.syncCategories = async (req, res, next) => {
   try {
     const result = await service.syncCategories();
@@ -108,54 +180,10 @@ exports.syncCategories = async (req, res, next) => {
     next(err);
   }
 };
+
+// ============================
+// WEBHOOK
+// ============================
 exports.webhook = (req, res, next) => {
   service.webhook(req, res).catch(next);
-};
-
-exports.fullSync = async (req, res, next) => {
-  try {
-
-    const start = Date.now();
-
-    // =========================
-    // CATEGORY SYNC
-    // =========================
-    const categoryResult =
-      await service.syncCategories();
-
-    // =========================
-    // PRODUCT SYNC
-    // =========================
-    const productResult =
-      await service.syncProducts();
-
-    const end = Date.now();
-
-    res.json({
-      success: true,
-
-      executionTime: `${(
-        (end - start) / 1000
-      ).toFixed(2)}s`,
-
-      categories: {
-        synced: categoryResult.total || 0
-      },
-
-      products: {
-        total: productResult.total || 0,
-        matched: productResult.matched || 0,
-        created: productResult.created || 0,
-        updated: productResult.updated || 0,
-        missing: productResult.missing || 0,
-        missingNames:
-          productResult.missingNames || [],
-        totalSavings:
-          productResult.totalSavings || 0
-      }
-    });
-
-  } catch (err) {
-    next(err);
-  }
 };

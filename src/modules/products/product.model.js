@@ -56,7 +56,10 @@ const productSchema = new mongoose.Schema({
   // ===========================
 // BUNDLE / EVENT PRODUCT
 // ===========================
-
+ customPrice: {           
+    type: Number,
+    default: null
+  },
 isBundle: {
   type: Boolean,
   default: false
@@ -108,6 +111,9 @@ popupImage: {
 }, { timestamps: true });
 
 productSchema.virtual('finalPrice').get(function () {
+  if (this.customPrice && this.customPrice > 0) {
+    return this.customPrice;
+  }
   return this.price + (this.price * this.markup / 100);
 });
 

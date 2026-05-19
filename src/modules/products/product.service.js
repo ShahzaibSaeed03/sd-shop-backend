@@ -53,7 +53,24 @@ exports.getProducts = async (query, user) => {
         as: "orders"
       }
     },
-
+    {
+      $addFields: {
+        finalPrice: {                    // ✅ ADD
+          $cond: {
+            if: { $and: [{ $gt: ['$customPrice', 0] }, { $ne: ['$customPrice', null] }] },
+            then: '$customPrice',
+            else: {
+              $add: ['$price', { $multiply: ['$price', { $divide: ['$markup', 100] }] }]
+            }
+          }
+        },
+        totalReviews: { $size: '$reviews' },
+        rating: {
+          $cond: [{ $gt: [{ $size: '$reviews' }, 0] }, { $avg: '$reviews.rating' }, 0]
+        },
+        sold: { $size: '$orders' }
+      }
+    },
     // ✅ CALCULATIONS
     {
       $addFields: {
@@ -313,7 +330,24 @@ exports.getProductsByCategorySlug = async (
         as: 'paidOrders'
       }
     },
-
+    {
+      $addFields: {
+        finalPrice: {                    // ✅ ADD
+          $cond: {
+            if: { $and: [{ $gt: ['$customPrice', 0] }, { $ne: ['$customPrice', null] }] },
+            then: '$customPrice',
+            else: {
+              $add: ['$price', { $multiply: ['$price', { $divide: ['$markup', 100] }] }]
+            }
+          }
+        },
+        reviewCount: { $size: '$reviews' },
+        rating: {
+          $cond: [{ $gt: [{ $size: '$reviews' }, 0] }, { $avg: '$reviews.rating' }, 0]
+        },
+        sold: { $size: '$paidOrders' }
+      }
+    },
     // ✅ CALCULATIONS
     {
       $addFields: {
@@ -376,11 +410,11 @@ exports.getProductsByCategorySlug = async (
   const avgRating =
     totalReviews > 0
       ? (
-          categoryReviews.reduce(
-            (acc, r) => acc + r.rating,
-            0
-          ) / totalReviews
-        ).toFixed(1)
+        categoryReviews.reduce(
+          (acc, r) => acc + r.rating,
+          0
+        ) / totalReviews
+      ).toFixed(1)
       : 0;
 
   // =========================

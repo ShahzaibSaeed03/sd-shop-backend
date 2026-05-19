@@ -864,16 +864,17 @@ exports.syncProducts = async () => {
               providerCode: cheapest.provider_code,
               supplierPriceRaw: cheapest.price,
               allProviders: allProvidersData,
+              customPrice: null,
               price: brlPrice,
               category: category?._id,
               categoryName: category?.name,
               lastSyncedAt: new Date(),
               isSupplierAvailable: true,
+              customPrice: null,
             },
-            // 🆕 $setOnInsert — sirf naye product ke liye (existing untouched)
             $setOnInsert: {
               name: fp.name,
-              displayName: fp.name,  // pehli baar default — admin baad me change kar sake
+              displayName: fp.name,
               isActive: true,
               featured: false,
               markup: 0,
