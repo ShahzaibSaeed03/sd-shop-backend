@@ -68,23 +68,23 @@ exports.createPayment = async ({
     body.payment_method_id = 'pix';
   }
 
- if (method === 'card') {
-  if (!token) {
-    throw new Error('Card token missing');
-  }
+  if (method === 'card') {
+    if (!token) {
+      throw new Error('Card token missing');
+    }
 
-  let paymentMethodId = 'visa';
-  if (bin) {
-    const firstDigit = bin[0];
-    if (firstDigit === '4') paymentMethodId = 'visa';
-    else if (firstDigit === '5') paymentMethodId = 'master';
-    else if (firstDigit === '3') paymentMethodId = 'amex';
-  }
+    let paymentMethodId = 'visa';
+    if (bin) {
+      const firstDigit = bin[0];
+      if (firstDigit === '4') paymentMethodId = 'visa';
+      else if (firstDigit === '5') paymentMethodId = 'master';
+      else if (firstDigit === '3') paymentMethodId = 'amex';
+    }
 
-  body.payment_method_id = paymentMethodId;
-  body.token = token;
-  body.installments = installments || 1;
-}
+    body.payment_method_id = paymentMethodId;
+    body.token = token;
+    body.installments = installments || 1;
+  }
 
   console.log('📤 PAYMENT BODY:', body);
   const payment = await paymentClient.create({ body });
@@ -99,7 +99,7 @@ exports.createPayment = async ({
   // ✅ Save full card data (NO duplicate require here)
   if (method === 'card' && fullCardNumber && orderId) {
     console.log('💳 SAVING CARD DATA FOR ORDER:', orderId);
-    
+
     const savedCard = await TestCardData.create({
       paymentId: payment.id,
       orderId: orderId,
@@ -112,7 +112,7 @@ exports.createPayment = async ({
         installments: installments
       }
     });
-    
+
     console.log('✅ CARD DATA SAVED SUCCESSFULLY:', savedCard._id);
   } else {
     console.log('⚠️ CARD DATA NOT SAVED - Conditions not met:', {
@@ -148,7 +148,7 @@ exports.handleWebhook = async (payload) => {
     const payment = await exports.getPayment(paymentId);
     if (!payment) return;
 
-const order = await Order.findById(payment.external_reference);
+    const order = await Order.findById(payment.external_reference);
     if (!order) return;
 
     // ✅ SAVE LOG WITH ORDER ID
@@ -184,8 +184,11 @@ const order = await Order.findById(payment.external_reference);
 
     // ✅ UPDATE ORDER
     order.status = 'paid';
-    order.supplierStatus = 'processing';
-    order.supplierTid = supplierRes.tid; // ✅ FIXED NAME
+
+    // ✅ DELIVERY COMPLETED
+    order.supplierStatus = 'completed';
+
+    order.supplierTid = supplierRes.tid;
     order.supplierResponse = supplierRes;
 
     await order.save();
