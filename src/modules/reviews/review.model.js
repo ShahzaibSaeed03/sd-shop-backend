@@ -8,7 +8,6 @@ const reviewSchema = new mongoose.Schema({
     required: true
   },
 
-  // ✅ CATEGORY REVIEW
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
@@ -28,37 +27,21 @@ const reviewSchema = new mongoose.Schema({
     default: ''
   },
 
-  // ✅ LIKE / DISLIKE
-  likes: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  ],
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
 
-  dislikes: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  ]
+  dislikes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 
 }, {
   timestamps: true
 });
 
-// ✅ ONE REVIEW PER USER PER CATEGORY
-reviewSchema.index(
-  {
-    user: 1,
-    category: 1
-  },
-  {
-    unique: true
-  }
-);
+// ✅ unique index hatao — multiple reviews allow karo
+// reviewSchema.index({ user: 1, category: 1 }, { unique: true });
 
-module.exports = mongoose.model(
-  'Review',
-  reviewSchema
-);
+module.exports = mongoose.model('Review', reviewSchema);

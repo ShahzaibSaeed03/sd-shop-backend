@@ -91,6 +91,35 @@ exports.calculatePrice = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.createPending = async (req, res, next) => {
+
+  try {
+
+    const userId = req.user?._id || null;
+
+    const email =
+      req.user?.email ||
+      req.body.email ||
+      '';
+
+    const order =
+      await service.createPendingOrder(
+        userId,
+        req.body.productId,
+        email,
+        req.body
+      );
+
+    res.status(201).json(order);
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
 // ✅ ADMIN UPDATE STATUS
 exports.updateStatus = async (req, res, next) => {
   try {

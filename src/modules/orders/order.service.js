@@ -32,8 +32,11 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     if (code) {
       try {
         const couponResult = await influencerService.applyCode(code, finalPrice);
-        couponDiscount = finalPrice - couponResult.finalPrice;
-        finalPrice = couponResult.finalPrice;
+        couponDiscount = Number(
+          (finalPrice - couponResult.finalPrice).toFixed(2)
+        ); finalPrice = Number(
+          couponResult.finalPrice.toFixed(2)
+        );
         appliedCouponCode = code;
 
         console.log('🎟️ COUPON APPLIED:', {
@@ -63,7 +66,9 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
 
       cashbackPointsUsed = usablePoints;
       cashbackUsed = usablePoints / 100;
-      finalPrice = Math.max(0, finalPrice - cashbackUsed);
+      finalPrice = Number(
+        Math.max(0, finalPrice - cashbackUsed).toFixed(2)
+      );
 
       user.cashbackPoints -= usablePoints;
       user.totalCashbackSpent = (user.totalCashbackSpent || 0) + cashbackUsed;
@@ -79,11 +84,42 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     // ==========================
     // ✅ Step 4: CASHBACK TO EARN (1% reward)
     // ==========================
-    const cashbackPercent = 1;
-    const cashbackValue = (finalPrice * cashbackPercent) / 100;
+    // ==========================
+    // ✅ Step 4: PAYMENT FEE
+    // ==========================
+
     const paymentMethod = gameData.method || 'pix';
-    const totalAmount = Number(finalPrice.toFixed(2));
-    const feeAmount = 0;
+
+    let feePercent = 0;
+
+    if (paymentMethod === 'card') {
+      feePercent = 5.4;
+    }
+
+    if (paymentMethod === 'pix') {
+      feePercent = 1;
+    }
+
+    // ✅ fee AFTER coupon + cashback
+    const feeAmount = Number(
+      ((finalPrice * feePercent) / 100).toFixed(2)
+    );
+
+    // ✅ FINAL AMOUNT USER PAYS
+    const totalAmount = Number(
+      (finalPrice + feeAmount).toFixed(2)
+    );
+
+    // ==========================
+    // ✅ Step 5: CASHBACK TO EARN
+    // ==========================
+
+    // cashback should be based on paid amount
+    const cashbackPercent = 1;
+
+    const cashbackValue = Number(
+      ((totalAmount * cashbackPercent) / 100).toFixed(2)
+    );
 
     // ==========================
     // ✅ Step 5: CREATE ORDER
@@ -109,9 +145,14 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
       quantity: qty,
 
       // Pricing
-      originalPrice: product.price * qty,
-      price: finalPrice,
+      // Pricing
+      originalPrice: Number((product.price * qty).toFixed(2)),
+
+      // ✅ actual charged amount
+      price: totalAmount,
+
       paymentFee: feeAmount,
+
       totalAmount: totalAmount,
 
       paymentMethod: paymentMethod,
@@ -201,9 +242,61 @@ exports.calculatePrice = async (productId, code, method = 'pix') => {
 // ✅ USER ORDERS
 exports.getUserOrders = async (userId) => {
   try {
-    return await Order.find({ user: userId })
+
+    const orders = await Order.find({ user: userId })
       .populate('product')
       .sort({ createdAt: -1 });
+
+  return orders.map(o => ({
+
+  _id: o._id,
+
+  title: o.product?.name || 'Unknown Product',
+
+  image: o.product?.image || '',
+
+  status: o.status,
+
+  createdAt: o.createdAt,
+
+  quantity: o.quantity,
+
+  // ✅ pricing
+  originalPrice: o.originalPrice,
+
+  paymentFee: o.paymentFee,
+
+  totalAmount: o.totalAmount,
+
+  price: o.price,
+
+  // ✅ coupon
+  couponCode: o.couponCode,
+
+  couponDiscount: o.couponDiscount,
+
+  // ✅ cashback
+  cashbackEarned: o.cashbackEarned,
+
+  cashbackUsed: o.cashbackUsed,
+
+  cashbackPointsUsed: o.cashbackPointsUsed,
+
+  // ✅ RETURN SD COINS
+  cashbackCoins: Math.floor(
+    (o.cashbackEarned || 0) * 100
+  ),
+
+  // ✅ game data
+  userGameId: o.userGameId,
+
+  serverId: o.serverId,
+
+  // ✅ product
+  product: o.product
+
+}));
+
   } catch (err) {
     throw err;
   }
@@ -277,22 +370,39 @@ exports.updateOrderStatus = async (orderId, status) => {
   return order;
 };
 
-// ✅ RECENT PURCHASES (GLOBAL / PUBLIC)
-// ✅ RECENT PRODUCT PURCHASES (clean response)
+// ✅ RECENT PURCHASES (RETURN CATEGORY INSTEAD OF PRODUCT)
 exports.getRecentPurchases = async (limit = 10) => {
-  const orders = await Order.find({ status: 'paid' })
-    .populate('product')
+
+  const orders = await Order.find({
+    status: 'paid'
+  })
+    .populate({
+      path: 'product',
+      populate: {
+        path: 'category',
+        select: 'name image slug'
+      }
+    })
     .sort({ createdAt: -1 })
     .limit(limit);
 
-  // 👉 return only product data
-  return orders.map(o => ({
-    _id: o.product?._id,
-    name: o.product?.name,
-    image: o.product?.image,
-    price: o.product?.price,
-    createdAt: o.createdAt
-  }));
+  return orders
+    .filter(o => o.product?.category)
+    .map(o => ({
+
+      // ✅ CATEGORY DATA
+      _id: o.product.category._id,
+
+      name: o.product.category.name,
+
+      image: o.product.category.image,
+
+      slug: o.product.category.slug,
+
+      createdAt: o.createdAt
+
+    }));
+
 };
 
 exports.getOrderById = async (orderId) => {
@@ -304,7 +414,88 @@ exports.getOrderById = async (orderId) => {
 
   return order;
 };
+exports.createPendingOrder = async (userId, productId, email, gameData) => {
 
+  const product = await Product.findById(productId);
+
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
+  const qty = Number(gameData.qty || 1);
+
+  const subtotal = Number(
+    (product.price * qty).toFixed(2)
+  );
+
+  // ==========================
+  // ✅ PAYMENT FEE
+  // ==========================
+
+  let feePercent = 0;
+
+  if ((gameData.method || 'pix') === 'pix') {
+    feePercent = 1;
+  }
+
+  if ((gameData.method || 'pix') === 'card') {
+    feePercent = 5.4;
+  }
+
+  const feeAmount = Number(
+    ((subtotal * feePercent) / 100).toFixed(2)
+  );
+
+  const totalAmount = Number(
+    (subtotal + feeAmount).toFixed(2)
+  );
+
+  // ==========================
+  // ✅ CREATE ORDER
+  // ==========================
+
+  const order = await Order.create({
+
+    user: userId || null,
+
+    isGuest: !userId,
+
+    email,
+
+    product: productId,
+
+    quantity: qty,
+
+    originalPrice: subtotal,
+
+    // ✅ actual payable amount
+    price: totalAmount,
+
+    paymentFee: feeAmount,
+
+    totalAmount: totalAmount,
+
+    paymentMethod: gameData.method || 'pix',
+
+    userGameId: gameData.user_id,
+
+    serverId: gameData.server_id,
+
+    zoneId: gameData.zone_id,
+
+    nickname: gameData.nickname,
+
+    status: 'pending_payment',
+
+    supplierStatus: 'pending',
+
+    buyerName: 'PENDING',
+
+    cpf: '00000000000'
+  });
+
+  return order;
+};
 
 exports.getDashboard = async () => {
   const now = new Date();

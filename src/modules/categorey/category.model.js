@@ -16,7 +16,8 @@ const optionSchema = new mongoose.Schema({
 const formFieldSchema = new mongoose.Schema({
   name: { type: String },
   type: { type: String },
-  options: [optionSchema]
+  options: [optionSchema],
+  
 }, { _id: false });
 
 // =========================
@@ -79,7 +80,16 @@ const categorySchema = new mongoose.Schema({
   forms: [formFieldSchema],
 
   // ✅ NEW FIELD
-  gameInformation: [contentBlockSchema]
+  gameInformation: [contentBlockSchema],
+  averageRating: {
+  type: Number,
+  default: 0
+},
+
+totalReviews: {
+  type: Number,
+  default: 0
+},
 
 }, {
   timestamps: true

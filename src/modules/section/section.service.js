@@ -1,6 +1,9 @@
 const Section = require('./section.model');
 const Category = require('../categorey/category.model'); // ✅ FIXED PATH
 const orderService = require('../orders/order.service');
+const Order = require('../orders/order.model');
+const Product = require('../products/product.model');
+
 
 
 // ==========================
@@ -89,37 +92,121 @@ exports.getSections = async () => {
 // ==========================
 exports.getFrontendSections = async (userId) => {
 
-  const sections = await Section.find({ isActive: true })
-    .populate('categories', 'name image slug')
+  const sections = await Section.find({
+    isActive: true
+  })
+    .populate(
+      'categories',
+      `
+      name
+      image
+      slug
+      averageRating
+      totalReviews
+      `
+    )
     .sort({ order: 1 })
     .lean();
 
-  const formattedSections = sections.map(section => ({
-    _id: section._id,
-    name: section.name,
-    items: section.categories.map(c => ({
-      _id: c._id,
-      name: c.name,
-      image: c.image,
-      slug: c.slug
-    }))
-  }));
+  // ✅ CALCULATE SOLD COUNTS
+  const formattedSections = await Promise.all(
 
-  // ✅ GET USER RECENT
-  const recentItems = await orderService.getUserRecentPurchases(userId, 8);
+   sections.map(async (section) => ({
+
+  _id: section._id,
+
+  name: section.name,
+
+  subtitle: section.subtitle,
+
+  tabKey: section.tabKey,
+
+  apiSource: section.apiSource,
+
+  // ✅ ADD THESE
+  isSpecial: section.isSpecial,
+
+  specialTitle:
+    section.specialTitle,
+
+  specialSubtitle:
+    section.specialSubtitle,
+
+  backgroundType:
+    section.backgroundType,
+
+  items: await Promise.all(
+
+        section.categories.map(async (c) => {
+
+          // ✅ count paid orders
+          const totalSold =
+            await Order.countDocuments({
+
+              status: 'paid',
+
+              product: {
+                $in: await Product.find({
+                  category: c._id
+                }).distinct('_id')
+              }
+
+            });
+
+          return {
+
+            _id: c._id,
+
+            name: c.name,
+
+            image: c.image,
+
+            slug: c.slug,
+
+            averageRating:
+              c.averageRating || 0,
+
+            totalReviews:
+              c.totalReviews || 0,
+
+            totalSold
+
+          };
+
+        })
+
+      )
+
+    }))
+
+  );
+
+  // ✅ RECENT PURCHASES
+  const recentItems =
+    await orderService.getRecentPurchases(
+      userId,
+      8
+    );
 
   const finalSections = [];
 
-  // ✅ ONLY ADD IF HAS DATA
-  if (recentItems && recentItems.length > 0) {
+  if (
+    recentItems &&
+    recentItems.length > 0
+  ) {
+
     finalSections.push({
+
       _id: 'recent-purchases',
+
       name: 'Recently Purchased',
+
       items: recentItems
+
     });
+
   }
 
-  // ✅ ADD OTHER SECTIONS
   formattedSections.forEach(s => {
     finalSections.push(s);
   });

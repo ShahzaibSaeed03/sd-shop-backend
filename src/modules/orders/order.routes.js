@@ -151,6 +151,11 @@ router.get('/recent', controller.getRecentPurchases);
 router.post('/calculate', controller.calculatePrice);
 router.get('/:id', protect, isAdmin, controller.getOne);
 // ✅ HOME SECTIONS
+router.post(
+  '/pending',
+  optionalAuth,
+  controller.createPending
+);
 router.post('/:id/retry', protect, isAdmin, controller.retry);
 router.get('/my/recent', protect, controller.getMyRecentPurchases);
 module.exports = router;

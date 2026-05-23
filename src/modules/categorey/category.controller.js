@@ -1,6 +1,7 @@
 const Category = require('./category.model');
 const s3 = require('../../config/s3');
 const { slugify } = require('../../utils/slugify');
+const Order = require('../orders/order.model');
 
 // category.controller.js
 
@@ -50,51 +51,157 @@ exports.updateCategory = async (req, res, next) => {
 };
 
 exports.getCategories = async (req, res, next) => {
+
   try {
 
     const data = await Category.aggregate([
+
+      // ✅ PRODUCTS
       {
         $lookup: {
-          from: 'products', // 👈 collection name
+          from: 'products',
           localField: '_id',
           foreignField: 'category',
           as: 'products'
         }
       },
+
+      // ✅ ORDERS
       {
-        $addFields: {
-          totalProducts: { $size: '$products' }
+        $lookup: {
+          from: 'orders',
+
+          let: {
+            categoryId: '$_id'
+          },
+
+          pipeline: [
+
+            {
+              $lookup: {
+                from: 'products',
+                localField: 'product',
+                foreignField: '_id',
+                as: 'product'
+              }
+            },
+
+            {
+              $unwind: '$product'
+            },
+
+            {
+              $match: {
+
+                status: 'paid',
+
+                $expr: {
+                  $eq: [
+                    '$product.category',
+                    '$$categoryId'
+                  ]
+                }
+
+              }
+            }
+
+          ],
+
+          as: 'paidOrders'
         }
       },
+
+      // ✅ STATS
+      {
+        $addFields: {
+
+          totalProducts: {
+            $size: '$products'
+          },
+
+          // ✅ REAL SOLD COUNT
+          totalSold: {
+            $size: '$paidOrders'
+          }
+
+        }
+      },
+
+      // ✅ RESPONSE
       {
         $project: {
+
           name: 1,
           code: 1,
           slug: 1,
           image: 1,
           isActive: 1,
-          totalProducts: 1
+
+          averageRating: 1,
+          totalReviews: 1,
+
+          totalProducts: 1,
+
+          // ✅ NEW
+          totalSold: 1,
+    isSpecial: 1,
+    specialTitle: 1,
+    specialSubtitle: 1
         }
       }
+
     ]);
 
     res.json({
+
       success: true,
+
       total: data.length,
+
       data
+
     });
 
   } catch (err) {
+
     next(err);
+
   }
+
 };
 exports.searchCategories = async (req, res, next) => {
   try {
+
     const q = req.query.q || '';
 
+    if (!q.trim()) {
+      return res.json({
+        success: true,
+        total: 0,
+        data: []
+      });
+    }
+
+    // ✅ guest OR normal user
+    let filter = {
+      isActive: true
+    };
+
+    // ✅ admin can see all
+    if (req.user?.role === 'admin') {
+      filter = {};
+    }
+
     const categories = await Category.find({
-      name: { $regex: q, $options: 'i' }
-    }).select('name image slug isActive');
+      ...filter,
+
+      name: {
+        $regex: q,
+        $options: 'i'
+      }
+    })
+      .select('name image slug isActive')
+      .limit(10);
 
     res.json({
       success: true,
