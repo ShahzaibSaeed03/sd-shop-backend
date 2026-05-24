@@ -27,6 +27,9 @@ totalCashbackSpent: {
   type: Number,
   default: 0
 },
+picture: {
+  type: String
+},
 googleId: String,
 provider: {
   type: String,

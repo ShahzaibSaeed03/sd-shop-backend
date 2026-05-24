@@ -43,11 +43,10 @@ const sectionSchema = new mongoose.Schema({
     default: ''
   },
 
-  tabKey: {
+  tabKeys: [{
     type: String,
-    enum: ['topup', 'coins', 'gift', 'voucher', 'items', null],
-    default: null
-  },
+    enum: ['topup', 'coins', 'gift', 'voucher', 'items']
+  }],
 
   backgroundType: {
     type: String,

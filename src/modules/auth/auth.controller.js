@@ -42,53 +42,116 @@ exports.makeAdmin = async (req, res, next) => {
 };
 
 exports.googleLogin = async (req, res, next) => {
+
   try {
+
     const { token } = req.body;
 
     if (!token) {
-      return res.status(400).json({ message: 'Token required' });
-    }
 
-    // ✅ VERIFY GOOGLE TOKEN
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-
-    const payload = ticket.getPayload();
-
-    const { sub, email, name } = payload;
-
-    let user = await User.findOne({ email });
-
-    // ✅ CREATE USER IF NOT EXISTS
-    if (!user) {
-      user = await User.create({
-        name,
-        email,
-        googleId: sub,
-        provider: 'google',
-        cashbackPoints: 100,            // ✅ 1 BRL reward
-        totalCashbackEarned: 1
+      return res.status(400).json({
+        message: 'Token required'
       });
+
     }
 
-    // ✅ GENERATE TOKEN (SAME AS LOGIN)
+    // VERIFY GOOGLE TOKEN
+    const ticket =
+      await client.verifyIdToken({
+
+        idToken: token,
+
+        audience:
+          process.env.GOOGLE_CLIENT_ID
+
+      });
+
+    const payload =
+      ticket.getPayload();
+
+    const {
+      sub,
+      email,
+      name,
+      picture
+    } = payload;
+
+    // ✅ FIND USER
+    let user =
+      await User.findOne({ email });
+
+    // ✅ UPDATE GOOGLE IMAGE
+    if (
+      user &&
+      picture &&
+      user.picture !== picture
+    ) {
+
+      user.picture = picture;
+
+      await user.save();
+
+    }
+
+    // ✅ CREATE USER
+    if (!user) {
+
+      user = await User.create({
+
+        name,
+
+        email,
+
+        picture,
+
+        googleId: sub,
+
+        provider: 'google',
+
+        cashbackPoints: 100,
+
+        totalCashbackEarned: 1
+
+      });
+
+    }
+
+    // ✅ JWT TOKEN
     const jwtToken = jwt.sign(
-      { id: user._id, role: user.role },
+
+      {
+        id: user._id,
+        role: user.role
+      },
+
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+
+      {
+        expiresIn: '7d'
+      }
+
     );
 
+    // ✅ RESPONSE
     res.json({
+
       token: jwtToken,
+
       user
+
     });
 
   } catch (err) {
-    console.log('❌ GOOGLE LOGIN ERROR:', err.message);
+
+    console.log(
+      '❌ GOOGLE LOGIN ERROR:',
+      err.message
+    );
+
     next(err);
+
   }
+
 };
 exports.getWallet = async (req, res) => {
   const user = await User.findById(req.user._id);

@@ -1,54 +1,33 @@
 const Section = require('./section.model');
-const Category = require('../categorey/category.model'); // ✅ FIXED PATH
+const Category = require('../categorey/category.model');
 const orderService = require('../orders/order.service');
 const Order = require('../orders/order.model');
 const Product = require('../products/product.model');
-
-
 
 // ==========================
 // VALIDATE CATEGORIES
 // ==========================
 const validateCategories = async (ids = []) => {
   if (!ids || !ids.length) return [];
-
-  const categories = await Category.find({
-    _id: { $in: ids }
-  }).select('_id');
-
+  const categories = await Category.find({ _id: { $in: ids } }).select('_id');
   return categories.map(c => c._id);
 };
 
 // ==========================
-// GET API CATEGORIES (DYNAMIC)
+// GET API CATEGORIES
 // ==========================
 const getApiCategories = async (apiSource) => {
   let query = { isActive: true };
   let sort = { createdAt: -1 };
 
   switch (apiSource) {
-    case 'hot_selling':
-      sort = { totalProducts: -1 };
-      break;
-
-    case 'featured':
-      query.featured = true;
-      break;
-
-    case 'new_releases':
-      sort = { createdAt: -1 };
-      break;
-
-    case 'top_games':
-    default:
-      sort = { createdAt: -1 };
+    case 'hot_selling': sort = { totalProducts: -1 }; break;
+    case 'featured': query.featured = true; break;
+    case 'new_releases': sort = { createdAt: -1 }; break;
+    default: sort = { createdAt: -1 };
   }
 
-  const categories = await Category.find(query)
-    .sort(sort)
-    .limit(10)
-    .select('_id');
-
+  const categories = await Category.find(query).sort(sort).limit(10).select('_id');
   return categories.map(c => c._id);
 };
 
@@ -56,20 +35,18 @@ const getApiCategories = async (apiSource) => {
 // CREATE
 // ==========================
 exports.createSection = async (data) => {
+  if (data.mode === 'manual' && !data.name) throw new Error('Section name required');
 
-  // ✅ Manual → name required
-  if (data.mode === 'manual' && !data.name) {
-    throw new Error('Section name required');
+  // ✅ normalize tabKeys
+  if (data.tabKeys && !Array.isArray(data.tabKeys)) {
+    data.tabKeys = [data.tabKeys];
   }
 
-  // ✅ API → auto name + auto categories
   if (data.mode === 'api') {
     data.name = data.name || data.apiSource;
-
     data.categories = await getApiCategories(data.apiSource);
   }
 
-  // ✅ Manual → validate categories
   if (data.mode === 'manual') {
     data.apiSource = null;
     data.categories = await validateCategories(data.categories);
@@ -92,124 +69,63 @@ exports.getSections = async () => {
 // ==========================
 exports.getFrontendSections = async (userId) => {
 
-  const sections = await Section.find({
-    isActive: true
-  })
-    .populate(
-      'categories',
-      `
-      name
-      image
-      slug
-      averageRating
-      totalReviews
-      `
-    )
+  const sections = await Section.find({ isActive: true })
+    .populate('categories', 'name image slug averageRating totalReviews')
     .sort({ order: 1 })
     .lean();
 
-  // ✅ CALCULATE SOLD COUNTS
   const formattedSections = await Promise.all(
-
-   sections.map(async (section) => ({
-
-  _id: section._id,
-
-  name: section.name,
-
-  subtitle: section.subtitle,
-
-  tabKey: section.tabKey,
-
-  apiSource: section.apiSource,
-
-  // ✅ ADD THESE
-  isSpecial: section.isSpecial,
-
-  specialTitle:
-    section.specialTitle,
-
-  specialSubtitle:
-    section.specialSubtitle,
-
-  backgroundType:
-    section.backgroundType,
-
-  items: await Promise.all(
-
+    sections.map(async (section) => ({
+      _id: section._id,
+      name: section.name,
+      subtitle: section.subtitle,
+      // ✅ tabKeys array
+      tabKeys: section.tabKeys || [],
+      apiSource: section.apiSource,
+      isSpecial: section.isSpecial,
+      specialTitle: section.specialTitle,
+      specialSubtitle: section.specialSubtitle,
+      backgroundType: section.backgroundType,
+      items: await Promise.all(
         section.categories.map(async (c) => {
-
-          // ✅ count paid orders
-          const totalSold =
-            await Order.countDocuments({
-
-              status: 'paid',
-
-              product: {
-                $in: await Product.find({
-                  category: c._id
-                }).distinct('_id')
-              }
-
-            });
-
+          const totalSold = await Order.countDocuments({
+            status: 'paid',
+            product: {
+              $in: await Product.find({ category: c._id }).distinct('_id')
+            }
+          });
           return {
-
             _id: c._id,
-
             name: c.name,
-
             image: c.image,
-
             slug: c.slug,
-
-            averageRating:
-              c.averageRating || 0,
-
-            totalReviews:
-              c.totalReviews || 0,
-
+            averageRating: c.averageRating || 0,
+            totalReviews: c.totalReviews || 0,
             totalSold
-
           };
-
         })
-
       )
-
     }))
-
   );
-
-  // ✅ RECENT PURCHASES
-  const recentItems =
-    await orderService.getRecentPurchases(
-      userId,
-      8
-    );
 
   const finalSections = [];
 
-  if (
-    recentItems &&
-    recentItems.length > 0
-  ) {
-
-    finalSections.push({
-
-      _id: 'recent-purchases',
-
-      name: 'Recently Purchased',
-
-      items: recentItems
-
-    });
-
+  // ✅ Recent purchases — ONLY for logged-in users
+  if (userId) {
+    const recentItems = await orderService.getRecentPurchases(userId, 8);
+    if (recentItems && recentItems.length > 0) {
+      finalSections.push({
+        _id: 'recent-purchases',
+        name: 'Compras Recentes',
+        subtitle: '',
+        tabKeys: [],
+        isSpecial: false,
+        items: recentItems
+      });
+    }
   }
 
-  formattedSections.forEach(s => {
-    finalSections.push(s);
-  });
+  formattedSections.forEach(s => finalSections.push(s));
 
   return finalSections;
 };
@@ -218,21 +134,20 @@ exports.getFrontendSections = async (userId) => {
 // UPDATE
 // ==========================
 exports.updateSection = async (id, data) => {
+  // ✅ normalize tabKeys
+  if (data.tabKeys && !Array.isArray(data.tabKeys)) {
+    data.tabKeys = [data.tabKeys];
+  }
 
-  // ✅ Manual
   if (data.mode === 'manual') {
     data.apiSource = null;
-
     if (data.categories) {
       data.categories = await validateCategories(data.categories);
     }
   }
 
-  // ✅ API
   if (data.mode === 'api') {
     data.name = data.name || data.apiSource;
-
-    // ⚠️ only update categories if not provided
     if (!data.categories) {
       data.categories = await getApiCategories(data.apiSource);
     }
@@ -260,7 +175,7 @@ exports.reorderSections = async (items) => {
 };
 
 // ==========================
-// OPTIONS (DROPDOWN)
+// OPTIONS
 // ==========================
 exports.getOptions = () => {
   return [
