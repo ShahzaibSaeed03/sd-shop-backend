@@ -6,6 +6,11 @@ const Category = require('../categorey/category.model');
 const { slugify } = require('../../utils/slugify');
 
 const axiosRetry = require('axios-retry').default;
+const FIXED_PRODUCTS =
+  require('../../config/supplier-categories');
+
+const FIXED_CATEGORIES =
+  require('../../config/supplier-games');
 // apply on default axios
 
 // 🔹 CONFIG
@@ -397,80 +402,7 @@ const deriveRequirementsFromForms = (forms = []) => {
 // 🔹 SYNC CATEGORIES
 exports.syncCategories = async () => {
   try {
-    const FIXED_CATEGORIES = [
-      // ✅ WUTHERING WAVES — Lapak code: WUTWVS
-      {
-        code: 'WUTWVS',
-        name: 'Wuthering Waves',
-        forms: [
-          { name: 'user_id', type: 'number' },
-          {
-            name: 'additional_id',
-            type: 'option',
-            options: [
-              { value: 'SEA', name: 'SEA' },
-              { value: 'Asia', name: 'Asia' },
-              { value: 'America', name: 'America' },
-              { value: 'Europe', name: 'Europe' },
-              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
-            ]
-          }
-        ]
-      },
 
-      // ⏳ INACTIVE — Lapak BR me available nahi, future me activate karenge
-      {
-        code: 'HSR',
-        name: 'Honkai Star Rail',
-        forms: [
-          { name: 'user_id', type: 'text' },
-          {
-            name: 'additional_id',
-            type: 'option',
-            options: [
-              { value: 'Asia', name: 'Asia' },
-              { value: 'America', name: 'America' },
-              { value: 'Europe', name: 'Europe' },
-              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
-            ]
-          }
-        ]
-      },
-      {
-        code: 'GENSHIN',
-        name: 'Genshin Impact',
-        forms: [
-          { name: 'user_id', type: 'text' },
-          {
-            name: 'additional_id',
-            type: 'option',
-            options: [
-              { value: 'America', name: 'America' },
-              { value: 'Asia', name: 'Asia' },
-              { value: 'Europe', name: 'Europe' },
-              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
-            ]
-          }
-        ]
-      },
-      {
-        code: 'ZZZ',
-        name: 'Zenless Zone Zero',
-        forms: [
-          { name: 'user_id', type: 'number' },
-          {
-            name: 'additional_id',
-            type: 'option',
-            options: [
-              { value: 'America', name: 'America' },
-              { value: 'Asia', name: 'Asia' },
-              { value: 'Europe', name: 'Europe' },
-              { value: 'TW_HK_MO', name: 'TW_HK_MO' }
-            ]
-          }
-        ]
-      }
-    ];
 
     const ops = FIXED_CATEGORIES.map(c => ({
       updateOne: {
@@ -618,158 +550,7 @@ exports.syncProducts = async () => {
 
     });
 
-    const FIXED_PRODUCTS = [
 
-      // ---------------- HSR ----------------
-      {
-        groupCode: 'HSTRESP',
-        name: 'Express Supply Pass',
-        game: 'HSTR'
-      },
-      {
-        groupCode: 'HSTRLOG60',
-        name: '60 Oneiric Shard',
-        game: 'HSTRLOG'
-      },
-      {
-        groupCode: 'HSTRLOG300',
-        name: '300 Oneiric Shard + Bonus',
-        game: 'HSTRLOG'
-      },
-      {
-        groupCode: 'HSTRLOG980',
-        name: '980 Oneiric Shard + Bonus',
-        game: 'HSTRLOG'
-      },
-      {
-        groupCode: 'HSTRLOG1980',
-        name: '1980 Oneiric Shard + Bonus',
-        game: 'HSTRLOG'
-      },
-      {
-        groupCode: 'HSTRLOG3280',
-        name: '3280 Oneiric Shard + Bonus',
-        game: 'HSTRLOG'
-      },
-      {
-        groupCode: 'HSTRLOG6480',
-        name: '6480 Oneiric Shard + Bonus',
-        game: 'HSTRLOG'
-      },
-
-      // ---------------- GENSHIN ----------------
-      // ---------------- GENSHIN ----------------
-      {
-        groupCode: 'GIWELKINB2BUS',
-        name: 'Blessing Welkin Moon',
-        game: 'GIUS'
-      },
-      {
-        groupCode: 'GI60B2BUS',
-        name: '60 Crystals',
-        game: 'GIUS'
-      },
-      {
-        groupCode: 'GI330B2BUS',
-        name: '300 + 30 Crystals',
-        game: 'GIUS'
-      },
-      {
-        groupCode: 'GI1090B2BUS',
-        name: '980 + 110 Crystals',
-        game: 'GIUS'
-      },
-      {
-        groupCode: 'GI2240B2BUS',
-        name: '1980 + 260 Crystals',
-        game: 'GIUS'
-      },
-      {
-        groupCode: 'GI3940B2BUS',
-        name: '3280 + 600 Crystals',
-        game: 'GIUS'
-      },
-      {
-        groupCode: 'GI8080B2BUS',
-        name: '6480 + 1600 Crystals',
-        game: 'GIUS'
-      },
-
-      // ---------------- ZZZ ----------------
-      {
-        groupCode: 'ZZZPASS',
-        name: 'Inter-Knot Membership',
-        game: 'ZZZ'
-      },
-      {
-        groupCode: 'ZZZ60B2BUS',
-        name: '60 Monochrome',
-        game: 'ZZZUS'
-      },
-      {
-        groupCode: 'ZZZ300B2BUS',
-        name: '300 + 30 Monochrome',
-        game: 'ZZZUS'
-      },
-      {
-        groupCode: 'ZZZ980B2BUS',
-        name: '980+110 Monochrome',
-        game: 'ZZZUS'
-      },
-      {
-        groupCode: 'ZZZ1980B2BUS',
-        name: '1980+260 Monochrome',
-        game: 'ZZZUS'
-      },
-      {
-        groupCode: 'ZZZ3280B2BUS',
-        name: '3280+600 Monochrome',
-        game: 'ZZZUS'
-      },
-      {
-        groupCode: 'ZZZ6480B2BUS',
-        name: '6480+1600 Monochrome',
-        game: 'ZZZUS'
-      },
-
-      // ---------------- WW ----------------
-      {
-        groupCode: 'WUTWVSLS1',
-        name: 'Lunite Subscription',
-        game: 'WUTWVS'
-      },
-      {
-        groupCode: 'WUTWVS60',
-        name: '60 Lunites',
-        game: 'WUTWVS'
-      },
-      {
-        groupCode: 'WUTWVS300',
-        name: '300 Lunites',
-        game: 'WUTWVS'
-      },
-      {
-        groupCode: 'WUTWVS980',
-        name: '980 Lunites',
-        game: 'WUTWVS'
-      },
-      {
-        groupCode: 'WUTWVS1980',
-        name: '1980 Lunites',
-        game: 'WUTWVS'
-      },
-      {
-        groupCode: 'WUTWVS3280',
-        name: '3280 Lunites',
-        game: 'WUTWVS'
-      },
-      {
-        groupCode: 'WUTWVS6480',
-        name: '6480 Lunites',
-        game: 'WUTWVS'
-      }
-
-    ];
 
     const stats = {
       total: FIXED_PRODUCTS.length,
@@ -786,8 +567,8 @@ exports.syncProducts = async () => {
     for (const fp of FIXED_PRODUCTS) {
 
       const allProviders = products.filter(p =>
-        p.group_product_code === fp.groupCode &&
-        p.category_code === fp.game &&
+        p.code === fp.supplierId &&
+        p.category_code === fp.supplierCategory &&
         p.price > 0
       );
 
@@ -801,7 +582,7 @@ exports.syncProducts = async () => {
         // ✅ mark unavailable in DB
         await Product.findOneAndUpdate(
           {
-            supplierCategory: fp.game,
+            supplierCategory: fp.supplierCategory,
             name: fp.name
           },
           {
@@ -844,12 +625,12 @@ exports.syncProducts = async () => {
         status: p.status
       }));
 
-      const category = categoryMap[fp.game];
+      const category = categoryMap[fp.supplierCategory];
 
       // 🔑 Filter: match by group_product_code + game (so suppliers can change, product stays)
       // NOT by supplierId — because cheapest provider may change between syncs
       const productFilter = {
-        supplierCategory: fp.game,
+        supplierCategory: fp.supplierCategory,
         name: fp.name
       };
 
@@ -860,7 +641,7 @@ exports.syncProducts = async () => {
             // 🔄 $set — sirf SYNC fields (admin's customizations untouched)
             $set: {
               supplierId: cheapest.code,
-              supplierCategory: fp.game,
+              supplierCategory: fp.supplierCategory,
               providerCode: cheapest.provider_code,
               supplierPriceRaw: cheapest.price,
               allProviders: allProvidersData,

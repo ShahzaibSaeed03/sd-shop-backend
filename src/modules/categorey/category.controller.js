@@ -110,7 +110,35 @@ exports.getCategories = async (req, res, next) => {
           as: 'paidOrders'
         }
       },
-
+      {
+        $lookup: {
+          from: 'reviews',
+          let: {
+            categoryId: '$_id'
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$category', '$$categoryId']
+                }
+              }
+            },
+            {
+              $group: {
+                _id: '$category',
+                averageRating: {
+                  $avg: '$rating'
+                },
+                totalReviews: {
+                  $sum: 1
+                }
+              }
+            }
+          ],
+          as: 'reviewStats'
+        }
+      },
       // ✅ STATS
       {
         $addFields: {
@@ -119,9 +147,37 @@ exports.getCategories = async (req, res, next) => {
             $size: '$products'
           },
 
-          // ✅ REAL SOLD COUNT
           totalSold: {
             $size: '$paidOrders'
+          },
+
+          averageRating: {
+            $ifNull: [
+              {
+                $round: [
+                  {
+                    $arrayElemAt: [
+                      '$reviewStats.averageRating',
+                      0
+                    ]
+                  },
+                  1
+                ]
+              },
+              0
+            ]
+          },
+
+          totalReviews: {
+            $ifNull: [
+              {
+                $arrayElemAt: [
+                  '$reviewStats.totalReviews',
+                  0
+                ]
+              },
+              0
+            ]
           }
 
         }
@@ -144,9 +200,9 @@ exports.getCategories = async (req, res, next) => {
 
           // ✅ NEW
           totalSold: 1,
-    isSpecial: 1,
-    specialTitle: 1,
-    specialSubtitle: 1
+          isSpecial: 1,
+          specialTitle: 1,
+          specialSubtitle: 1
         }
       }
 
