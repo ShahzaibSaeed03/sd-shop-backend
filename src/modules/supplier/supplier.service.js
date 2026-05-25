@@ -6,12 +6,12 @@ const Category = require('../categorey/category.model');
 const { slugify } = require('../../utils/slugify');
 
 const axiosRetry = require('axios-retry').default;
+
 const FIXED_PRODUCTS =
-  require('../../config/supplier-categories');
+  require('../../config/supplier-games');
 
 const FIXED_CATEGORIES =
-  require('../../config/supplier-games');
-// apply on default axios
+  require('../../config/supplier-categories');
 
 // 🔹 CONFIG
 const BASE_URL = process.env.SUPPLIER_BASE_URL || 'https://www.lapakgaming.com';
