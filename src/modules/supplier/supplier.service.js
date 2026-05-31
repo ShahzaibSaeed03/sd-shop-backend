@@ -489,6 +489,8 @@ exports.fetchProducts = async () => {
       return true;
 
     });
+    console.log('SAMPLE KEYS:', Object.keys(uniqueProducts[0]));
+    console.log('SAMPLE PRODUCT:', JSON.stringify(uniqueProducts[0], null, 2));
 
     console.log('═══════════════════════════════');
     console.log(`📦 FINAL UNIQUE PRODUCTS: ${uniqueProducts.length}`);
@@ -568,7 +570,8 @@ exports.syncProducts = async () => {
 
       const allProviders = products.filter(p =>
         p.code === fp.supplierId &&
-        p.price > 0
+        p.price > 0 &&
+        p.status !== 'empty'
       );
 
       if (allProviders.length === 0) {
