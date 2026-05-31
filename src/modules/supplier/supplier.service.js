@@ -567,8 +567,7 @@ exports.syncProducts = async () => {
     for (const fp of FIXED_PRODUCTS) {
 
       const allProviders = products.filter(p =>
-        p.group_product_code === fp.supplierId &&
-        p.category_code === fp.supplierCategory &&
+        p.code === fp.supplierId &&
         p.price > 0
       );
 
