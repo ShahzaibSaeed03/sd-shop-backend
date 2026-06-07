@@ -81,16 +81,7 @@ module.exports = [
   { supplierCategory: 'NBAI', name: '5000 IC', supplierId: 'NBAI5000-S50-th' },
   { supplierCategory: 'NBAI', name: '10000 IC', supplierId: 'NBAI10000-S50-th' },
 
-  // =========================================
-  // TOWER OF FANTASY
-  // =========================================
-
-  { supplierCategory: 'TOF', name: '100 Lattices', supplierId: 'MRTU100-S95' },
-  { supplierCategory: 'TOF', name: '500 Lattices', supplierId: 'MRTU500-S95' },
-  { supplierCategory: 'TOF', name: '1000 Lattices', supplierId: 'MRTU1000-S95' },
-  { supplierCategory: 'TOF', name: '2180 Lattices', supplierId: 'MRTU2180-S95' },
-  { supplierCategory: 'TOF', name: '5680 Lattices', supplierId: 'MRTU5680-S95' },
-  { supplierCategory: 'TOF', name: '11680 Lattices', supplierId: 'MRTU11680-S95' },
+ 
 
   // =========================================
   // JUJUTSU KAISEN PHANTOM PARADE
@@ -142,34 +133,22 @@ module.exports = [
   // CALL OF DUTY MOBILE
   // =========================================
 
-  { supplierCategory: 'CODM', name: '60 + 5 Vouchers', supplierId: 'COFA60V-S50A-br' },
-  { supplierCategory: 'CODM', name: '300 + 25 Vouchers', supplierId: 'COFA300V-S50A-br' },
-  { supplierCategory: 'CODM', name: '980 + 81 Vouchers', supplierId: 'COFA980V-S50A-my' },
-  { supplierCategory: 'CODM', name: '1980 + 165 Vouchers', supplierId: 'COFA1980V-S50A-my' },
-  { supplierCategory: 'CODM', name: '3280 + 273 Vouchers', supplierId: 'COFA3280V-S50A-my' },
-  { supplierCategory: 'CODM', name: '6480 + 540 Vouchers', supplierId: 'COFA6480V-S50A-my' },
-  { supplierCategory: 'CODM', name: '60 + 9 Opals', supplierId: 'COFA60O-S50A-br' },
-  { supplierCategory: 'CODM', name: '300 + 60 Opals', supplierId: 'COFA300V-S50A-br' },
-  { supplierCategory: 'CODM', name: '980 + 229 Opals', supplierId: 'COFA980O-S50A-my' },
-  { supplierCategory: 'CODM', name: '1980 + 499 Opals', supplierId: 'COFA1980O-S50A-my' },
-  { supplierCategory: 'CODM', name: '3280 + 965 Opals', supplierId: 'COFA3280O-S50A-my' },
-  { supplierCategory: 'CODM', name: '6480 + 2126 Opals', supplierId: 'COFA6480O-S50A-my' },
-  { supplierCategory: 'CODM', name: 'Phantasium Pass + 8 Opals', supplierId: 'COFAPP15D-S50A-my' },
-  { supplierCategory: 'CODM', name: 'Phantasium Pass + 14 Opals', supplierId: 'COFAPP30D-S50A-my' },
+  { supplierCategory: 'COFA', name: '60 + 5 Vouchers', supplierId: 'COFA60V-S50A-br' },
+  { supplierCategory: 'COFA', name: '300 + 25 Vouchers', supplierId: 'COFA300V-S50A-br' },
+  { supplierCategory: 'COFA', name: '980 + 81 Vouchers', supplierId: 'COFA980V-S50A-my' },
+  { supplierCategory: 'COFA', name: '1980 + 165 Vouchers', supplierId: 'COFA1980V-S50A-my' },
+  { supplierCategory: 'COFA', name: '3280 + 273 Vouchers', supplierId: 'COFA3280V-S50A-my' },
+  { supplierCategory: 'COFA', name: '6480 + 540 Vouchers', supplierId: 'COFA6480V-S50A-my' },
+  { supplierCategory: 'COFA', name: '60 + 9 Opals', supplierId: 'COFA60O-S50A-br' },
+  { supplierCategory: 'COFA', name: '300 + 60 Opals', supplierId: 'COFA300V-S50A-br' },
+  { supplierCategory: 'COFA', name: '980 + 229 Opals', supplierId: 'COFA980O-S50A-my' },
+  { supplierCategory: 'COFA', name: '1980 + 499 Opals', supplierId: 'COFA1980O-S50A-my' },
+  { supplierCategory: 'COFA', name: '3280 + 965 Opals', supplierId: 'COFA3280O-S50A-my' },
+  { supplierCategory: 'COFA', name: '6480 + 2126 Opals', supplierId: 'COFA6480O-S50A-my' },
+  { supplierCategory: 'COFA', name: 'Phantasium Pass + 8 Opals', supplierId: 'COFAPP15D-S50A-my' },
+  { supplierCategory: 'COFA', name: 'Phantasium Pass + 14 Opals', supplierId: 'COFAPP30D-S50A-my' },
 
-  // =========================================
-  // BLACK PINK THE GAME
-  // =========================================
 
-  { supplierCategory: 'BPS', name: '60 + 6 Rose Gem', supplierId: 'BPSRGLO66-S116' },
-  { supplierCategory: 'BPS', name: '300 + 30 Rose Gem', supplierId: 'BPSRGLO330-S116' },
-  { supplierCategory: 'BPS', name: '980 + 120 Rose Gem', supplierId: 'BPSRGLO1100-S116' },
-  { supplierCategory: 'BPS', name: '1980 + 288 Rose Gem', supplierId: 'BPSRGLO2268-S116' },
-  { supplierCategory: 'BPS', name: '3280 + 528 Rose Gem', supplierId: 'BPSRGLO3808-S116' },
-  { supplierCategory: 'BPS', name: '6480 + 1296 Rose Gem', supplierId: 'BPSRGLO7776-S116' },
-  { supplierCategory: 'BPS', name: 'Monthly Card', supplierId: 'BPSRGLOMC-S116' },
-  { supplierCategory: 'BPS', name: 'Void Pass I - Advanced', supplierId: 'BPSRGLOVP1ADV-S95-ph' },
-  { supplierCategory: 'BPS', name: 'Void Pass I - Supreme', supplierId: 'BPSRGLOVP1SUP-S95-ph' },
 
   // =========================================
   // BLOOD STRIKE
@@ -370,11 +349,11 @@ module.exports = [
   // No matching category in supplier-categories.js — needs a new category added
   // or mapped to correct game. Placeholder used below.
 
-  { supplierCategory: 'MOONFLOW', name: '519 Moonflow', supplierId: 'SIVBD519-S1' },
-  { supplierCategory: 'MOONFLOW', name: '1039 Moonflow', supplierId: 'SIVBD1039-S1' },
-  { supplierCategory: 'MOONFLOW', name: '2079 Moonflow', supplierId: 'SIVBD2079-S1' },
-  { supplierCategory: 'MOONFLOW', name: '3134 Moonflow', supplierId: 'SIVBD3134-S1' },
-  { supplierCategory: 'MOONFLOW', name: '5574 Moonflow', supplierId: 'SIVBD5774-S1' },
-  { supplierCategory: 'MOONFLOW', name: '8399 Moonflow', supplierId: 'SIVBD8399-S1' },
+  { supplierCategory: 'SIV', name: '519 Moonflow', supplierId: 'SIVBD519-S1' },
+  { supplierCategory: 'SIV', name: '1039 Moonflow', supplierId: 'SIVBD1039-S1' },
+  { supplierCategory: 'SIV', name: '2079 Moonflow', supplierId: 'SIVBD2079-S1' },
+  { supplierCategory: 'SIV', name: '3134 Moonflow', supplierId: 'SIVBD3134-S1' },
+  { supplierCategory: 'SIV', name: '5574 Moonflow', supplierId: 'SIVBD5774-S1' },
+  { supplierCategory: 'SIV', name: '8399 Moonflow', supplierId: 'SIVBD8399-S1' },
 
 ];
