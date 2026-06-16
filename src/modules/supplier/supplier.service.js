@@ -644,6 +644,21 @@ exports.syncProducts = async () => {
       }));
 
       const category = categoryMap[fp.supplierCategory];
+      // Save forms from Lapak product into category
+if (
+  category &&
+  cheapest.forms &&
+  cheapest.forms.length > 0
+) {
+  await Category.updateOne(
+    { _id: category._id },
+    {
+      $set: {
+        forms: cheapest.forms
+      }
+    }
+  );
+}
 
       // 🔑 Filter: match by group_product_code + game (so suppliers can change, product stays)
       // NOT by supplierId — because cheapest provider may change between syncs
