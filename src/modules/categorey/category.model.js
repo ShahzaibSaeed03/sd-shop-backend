@@ -15,9 +15,9 @@ const optionSchema = new mongoose.Schema({
 
 const formFieldSchema = new mongoose.Schema({
   name: { type: String },
+  label: { type: String }, // add this
   type: { type: String },
   options: [optionSchema],
-  
 }, { _id: false });
 
 // =========================
