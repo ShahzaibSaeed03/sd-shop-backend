@@ -15,9 +15,13 @@ const optionSchema = new mongoose.Schema({
 
 const formFieldSchema = new mongoose.Schema({
   name: { type: String },
-  label: { type: String }, // add this
+  label: { type: String },
   type: { type: String },
-  options: [optionSchema],
+
+  // supports:
+  // ['America', 'Europe']
+  options: [String]
+
 }, { _id: false });
 
 // =========================
