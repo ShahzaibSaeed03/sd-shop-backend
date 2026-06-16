@@ -403,7 +403,6 @@ const deriveRequirementsFromForms = (forms = []) => {
 exports.syncCategories = async () => {
   try {
 
-    // Lapak categories
     const supplierCategories = await exports.fetchCategories();
 
     const ops = FIXED_CATEGORIES.map(c => {
@@ -420,16 +419,26 @@ exports.syncCategories = async () => {
               code: c.code,
               name: c.name,
 
-              // 🔥 forms from Lapak
-              forms: supplierCategory?.forms || [],
+              // ✅ Manual forms from supplier-categories.js
+              forms: c.forms || [],
 
-              // optional
-              hasServer: supplierCategory?.hasServer || false,
+              // ✅ Auto detect if server field exists
+              hasServer:
+                c.forms?.some(
+                  f => f.name === 'server_id'
+                ) || false,
 
-              gameInformation: c.gameInformation || [],
+              gameInformation:
+                c.gameInformation || [],
+
               slug: slugify(c.name),
+
               game: c.name,
-              isActive: true
+
+              isActive: true,
+
+              image:
+                supplierCategory?.image || null
             }
           },
           upsert: true
@@ -445,7 +454,10 @@ exports.syncCategories = async () => {
     };
 
   } catch (error) {
-    console.error(error);
+    console.error(
+      'Category Sync Error:',
+      error
+    );
     throw error;
   }
 };
