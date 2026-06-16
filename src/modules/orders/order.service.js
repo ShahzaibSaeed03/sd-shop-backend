@@ -365,7 +365,16 @@ exports.updateOrderStatus = async (orderId, status) => {
 
     await user.save();
   }
-
+await WebhookLog.create({
+  orderId: order._id,
+  type:
+    status === 'paid'
+      ? 'PAYMENT_APPROVED'
+      : 'STATUS_CHANGED',
+  message: `${prevStatus} -> ${status}`,
+  statusBefore: prevStatus,
+  statusAfter: status
+});
   await order.save();
   return order;
 };

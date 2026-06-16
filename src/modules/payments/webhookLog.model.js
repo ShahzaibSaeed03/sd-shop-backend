@@ -5,12 +5,25 @@ const schema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order'
   },
-  payload: Object,
-  headers: Object
-}, { timestamps: true });
 
-// ✅ ADD INDEX
-schema.index({ createdAt: -1 });
+  type: {
+    type: String,
+    required: true
+  },
+
+  message: String,
+
+  payload: Object,
+
+  statusBefore: String,
+  statusAfter: String
+
+}, {
+  timestamps: true
+});
+
 schema.index({ orderId: 1 });
+schema.index({ createdAt: -1 });
+schema.index({ type: 1 });
 
 module.exports = mongoose.model('WebhookLog', schema);

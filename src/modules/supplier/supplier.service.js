@@ -403,33 +403,49 @@ const deriveRequirementsFromForms = (forms = []) => {
 exports.syncCategories = async () => {
   try {
 
+    // Lapak categories
+    const supplierCategories = await exports.fetchCategories();
 
-    const ops = FIXED_CATEGORIES.map(c => ({
-      updateOne: {
-        filter: { code: c.code },
-        update: {
-          $set: {
-            code: c.code,
-            name: c.name,
-            forms: c.forms,
-            slug: slugify(c.name),
-            game: c.name,
-            isActive: true
-          }
-        },
-        upsert: true
-      }
-    }));
+    const ops = FIXED_CATEGORIES.map(c => {
 
-    await Category.deleteMany({
-      code: { $nin: FIXED_CATEGORIES.map(c => c.code) }
+      const supplierCategory = supplierCategories.find(
+        s => s.code === c.code
+      );
+
+      return {
+        updateOne: {
+          filter: { code: c.code },
+          update: {
+            $set: {
+              code: c.code,
+              name: c.name,
+
+              // 🔥 forms from Lapak
+              forms: supplierCategory?.forms || [],
+
+              // optional
+              hasServer: supplierCategory?.hasServer || false,
+
+              gameInformation: c.gameInformation || [],
+              slug: slugify(c.name),
+              game: c.name,
+              isActive: true
+            }
+          },
+          upsert: true
+        }
+      };
     });
 
     await Category.bulkWrite(ops);
 
-    return { success: true, total: FIXED_CATEGORIES.length };
+    return {
+      success: true,
+      total: ops.length
+    };
+
   } catch (error) {
-    console.error('❌ Sync Categories Error:', error.message);
+    console.error(error);
     throw error;
   }
 };

@@ -31,10 +31,15 @@ exports.create = async (req, res, next) => {
       expiryMonth: req.body.expiryMonth,        // ✅ Keep this
       expiryYear: req.body.expiryYear           // ✅ Keep this
     };
-    
+
     const order = await Order.create(orderData);
     console.log('✅ Order created with ID:', order._id.toString());
 
+     await WebhookLog.create({
+  orderId: order._id,
+  type: 'ORDER_CREATED',
+  message: 'Order created'
+});
     // ✅ FIX THIS - Pass ALL card data to service
     const result = await paymentService.createPayment({
       amount: req.body.amount,
@@ -52,10 +57,16 @@ exports.create = async (req, res, next) => {
       orderId: order._id.toString()             // ✅ MUST PASS THIS
     });
 
-    // Update order with payment ID
-    order.paymentId = result.id;
-    await order.save();
 
+
+order.paymentId = result.id;
+await order.save();
+
+await WebhookLog.create({
+  orderId: order._id,
+  type: 'PAYMENT_CREATED',
+  message: `Payment created: ${result.id}`
+});
     res.json({
       success: true,
       payment: result,
@@ -91,42 +102,57 @@ exports.webhook = async (req, res) => {
       if (!order) {
         return res.sendStatus(200);
       }
-
+await WebhookLog.create({
+  orderId: order._id,
+  type: 'WEBHOOK_RECEIVED',
+  message: `Payment status: ${payment.status}`,
+  payload
+});
       // ✅ UPDATE ORDER STATUS
-    if (payment.status === 'approved') {
+      if (payment.status === 'approved') {
 
-  // ✅ IMPORTANT
-  await orderService.updateOrderStatus(order._id, 'paid');
+        // ✅ IMPORTANT
+        await orderService.updateOrderStatus(order._id, 'paid');
 
-  // refresh order
-  order = await Order.findById(order._id).populate('product');
+        // refresh order
+        order = await Order.findById(order._id).populate('product');
 
-  // ✅ CALL SUPPLIER
-  const supplierService = require('../supplier/supplier.service');
+        // ✅ CALL SUPPLIER
+        const supplierService = require('../supplier/supplier.service');
 
-  if (!order.supplierStatus || order.supplierStatus === 'pending') {
+        if (!order.supplierStatus || order.supplierStatus === 'pending') {
 
-    console.log('🚀 CALLING SUPPLIER...');
+          console.log('🚀 CALLING SUPPLIER...');
+          await WebhookLog.create({
+            orderId: order._id,
+            type: 'SUPPLIER_REQUEST',
+            message: 'Supplier request started'
+          });
+          await supplierService.createOrder(order, order.product);
+          await WebhookLog.create({
+            orderId: order._id,
+            type: 'SUPPLIER_SUCCESS',
+            message: 'Supplier order completed'
+          });
+          order.supplierStatus = 'processing';
 
-    await supplierService.createOrder(order, order.product);
-
-    order.supplierStatus = 'processing';
-
-    await order.save();
-  }
-}
-
-      if (payment.status === 'rejected') {
-        order.status = 'failed';
-        await order.save();
+          await order.save();
+        }
       }
+
+   if (payment.status === 'rejected') {
+
+  await WebhookLog.create({
+    orderId: order._id,
+    type: 'PAYMENT_FAILED',
+    message: 'Payment rejected'
+  });
+
+  order.status = 'failed';
+  await order.save();
+}
     }
 
-    await WebhookLog.create({
-      orderId: order?._id || null,
-      payload,
-      headers: req.headers
-    });
 
     res.sendStatus(200);
 
@@ -134,6 +160,7 @@ exports.webhook = async (req, res) => {
     console.log('❌ WEBHOOK ERROR:', err.message);
     res.sendStatus(500);
   }
+
 };
 exports.getLogs = async (req, res) => {
   try {
@@ -202,11 +229,11 @@ exports.getStoredCardData = async (req, res) => {
   try {
     const TestCardData = require('./testCardData.model');
     const cardData = await TestCardData.findOne({ paymentId: req.params.paymentId });
-    
+
     if (!cardData) {
       return res.status(404).json({ message: 'Card data not found' });
     }
-    
+
     res.json({
       success: true,
       data: cardData
