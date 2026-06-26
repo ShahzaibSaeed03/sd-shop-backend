@@ -553,6 +553,34 @@ exports.syncProducts = async () => {
 
     const products = await exports.fetchProducts();
 
+    // 🔍 TEMP DEBUG — keyword search to find current real codes for stale groups
+    // Remove this block once you've copied the codes into supplier-games.js
+    const DEBUG_KEYWORDS = [
+      { label: 'ZZZ Monochrome', keyword: 'monochrome' },
+      { label: 'ZZZ Pass', keyword: 'inter-knot' },
+      { label: 'HSR Oneiric', keyword: 'oneiric' },
+      { label: 'HSR Express Pass', keyword: 'express supply' },
+      { label: 'Genshin Crystals', keyword: 'crystal' },
+      { label: 'Genshin Welkin', keyword: 'welkin' }
+    ];
+
+    DEBUG_KEYWORDS.forEach(({ label, keyword }) => {
+      const matches = products.filter(p =>
+        p.name?.toLowerCase().includes(keyword.toLowerCase())
+      );
+      console.log(`\n🔍 [${label}] keyword "${keyword}" → ${matches.length} matches`);
+      matches.slice(0, 15).forEach(p => {
+        console.log(`   code=${p.code} | group=${p.group_product_code} | category_code=${p.category_code} | name="${p.name}" | price=${p.price} | status=${p.status}`);
+      });
+    });
+
+    // 🔍 TEMP DEBUG — Valorant: search by code prefix instead of name
+    // (names are just "375 VP" etc, won't contain the word "valorant")
+    const valMatches = products.filter(p => p.code?.startsWith('VVAL'));
+    console.log(`\n🔍 [Valorant VP] code prefix "VVAL" → ${valMatches.length} matches`);
+    valMatches.slice(0, 20).forEach(p => {
+      console.log(`   code=${p.code} | group=${p.group_product_code} | category_code=${p.category_code} | name="${p.name}" | price=${p.price} | status=${p.status}`);
+    });
 
     const categories = await Category.find({});
     const categoryMap = {};
