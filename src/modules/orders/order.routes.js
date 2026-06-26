@@ -73,7 +73,7 @@ const { protect, isAdmin } = require('../auth/auth.middleware');
  *       401:
  *         description: Unauthorized
  */
-router.post('/',optionalAuth, controller.create);
+router.post('/', optionalAuth, controller.create);
 
 /**
  * @swagger
@@ -117,6 +117,21 @@ router.get('/dashboard', protect, isAdmin, controller.getDashboard);
 
 router.get('/my', protect, controller.getMyOrders);
 
+router.get('/my/recent', protect, controller.getMyRecentPurchases);
+
+/**
+ * @swagger
+ * /api/orders/recent:
+ *   get:
+ *     summary: Get recent purchases (public)
+ *     tags: [Orders]
+ */
+router.get('/recent', controller.getRecentPurchases);
+
+router.post('/calculate', controller.calculatePrice);
+
+router.post('/pending', optionalAuth, controller.createPending);
+
 /**
  * @swagger
  * /api/orders:
@@ -127,6 +142,10 @@ router.get('/my', protect, controller.getMyOrders);
  *       - bearerAuth: []
  */
 router.get('/', protect, isAdmin, controller.getAllOrders);
+
+// ✅ MUST stay above '/:id' — otherwise Express matches "games" as an :id param
+// and Mongo throws "Cast to ObjectId failed for value games"
+router.get('/games', protect, isAdmin, controller.getGames);
 
 /**
  * @swagger
@@ -139,23 +158,10 @@ router.get('/', protect, isAdmin, controller.getAllOrders);
  */
 router.patch('/:id/status', protect, isAdmin, controller.updateStatus);
 
-
-/**
- * @swagger
- * /api/orders/recent:
- *   get:
- *     summary: Get recent purchases (public)
- *     tags: [Orders]
- */
-router.get('/recent', controller.getRecentPurchases);
-router.post('/calculate', controller.calculatePrice);
-router.get('/:id', protect, isAdmin, controller.getOne);
-// ✅ HOME SECTIONS
-router.post(
-  '/pending',
-  optionalAuth,
-  controller.createPending
-);
 router.post('/:id/retry', protect, isAdmin, controller.retry);
-router.get('/my/recent', protect, controller.getMyRecentPurchases);
+
+// ⚠️ Keep all specific/static routes ABOVE this line.
+// Any route added below '/:id' will be swallowed by it.
+router.get('/:id', protect, isAdmin, controller.getOne);
+
 module.exports = router;

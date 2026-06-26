@@ -15,7 +15,7 @@ const orderSchema = new mongoose.Schema({
     default: false
   },
   email: {
-    type: String   // ❌ removed: required: null  (was incorrect anyway)
+    type: String
   },
 
   // ===========================
@@ -26,6 +26,18 @@ const orderSchema = new mongoose.Schema({
     ref: 'Product',
     required: true
   },
+
+  // ✅ DENORMALIZED SNAPSHOT — taken at order creation time
+  // so order history survives even if product is deleted/resynced later
+  productName: {
+    type: String,
+    default: null
+  },
+  game: {
+    type: String,
+    default: null
+  },
+
   quantity: {
     type: Number,
     default: 1
@@ -34,10 +46,10 @@ const orderSchema = new mongoose.Schema({
   // ===========================
   // PRICING (full breakdown)
   // ===========================
-  originalPrice: { type: Number },              // product.price × qty (before any discount)
-  price: { type: Number, required: true },      // final charged amount (after all discounts)
+  originalPrice: { type: Number },
+  price: { type: Number, required: true },
   paymentFee: { type: Number, default: 0 },
-  totalAmount: { type: Number },                // price + paymentFee
+  totalAmount: { type: Number },
 
   // ===========================
   // COUPON (backend-applied)
@@ -48,9 +60,9 @@ const orderSchema = new mongoose.Schema({
   // ===========================
   // CASHBACK / SD COINS
   // ===========================
-  cashbackEarned: { type: Number, default: 0 },        // BRL earned this order
-  cashbackUsed: { type: Number, default: 0 },          // BRL discount from coins
-  cashbackPointsUsed: { type: Number, default: 0 },    // raw points spent
+  cashbackEarned: { type: Number, default: 0 },
+  cashbackUsed: { type: Number, default: 0 },
+  cashbackPointsUsed: { type: Number, default: 0 },
 
   // ===========================
   // INFLUENCER (optional)
@@ -105,7 +117,7 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // ===========================
-// INDEXES (optional but recommended)
+// INDEXES
 // ===========================
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });

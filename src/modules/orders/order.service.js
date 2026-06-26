@@ -11,32 +11,28 @@ const mongoose = require('mongoose');
 
 
 // ✅ CREATE ORDER
-
-
 exports.createOrder = async (userId, productId, code, email, gameData) => {
   try {
     const product = await Product.findById(productId);
     if (!product) throw new Error('Product not found');
 
-    // ✅ Step 1: Base price = product price × qty
     const qty =
       product.isBundle
         ? (product.bundleQuantity || 1)
-        : (Number(gameData.qty) || 1); let finalPrice = Number((product.price * qty).toFixed(2));
+        : (Number(gameData.qty) || 1);
+
+    let finalPrice = Number((product.price * qty).toFixed(2));
     let couponDiscount = 0;
     let appliedCouponCode = null;
 
     // ==========================
-    // ✅ Step 2: APPLY COUPON (backend is source of truth)
+    // ✅ APPLY COUPON
     // ==========================
     if (code) {
       try {
         const couponResult = await influencerService.applyCode(code, finalPrice);
-        couponDiscount = Number(
-          (finalPrice - couponResult.finalPrice).toFixed(2)
-        ); finalPrice = Number(
-          couponResult.finalPrice.toFixed(2)
-        );
+        couponDiscount = Number((finalPrice - couponResult.finalPrice).toFixed(2));
+        finalPrice = Number(couponResult.finalPrice.toFixed(2));
         appliedCouponCode = code;
 
         console.log('🎟️ COUPON APPLIED:', {
@@ -47,13 +43,11 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
         });
       } catch (err) {
         console.log('❌ Invalid coupon ignored:', err.message);
-        // Coupon invalid → ignore, charge full price
-        // Optional: throw new Error('Invalid coupon');
       }
     }
 
     // ==========================
-    // ✅ Step 3: APPLY CASHBACK (coins)
+    // ✅ APPLY CASHBACK (coins)
     // ==========================
     let cashbackUsed = 0;
     let cashbackPointsUsed = 0;
@@ -66,9 +60,7 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
 
       cashbackPointsUsed = usablePoints;
       cashbackUsed = usablePoints / 100;
-      finalPrice = Number(
-        Math.max(0, finalPrice - cashbackUsed).toFixed(2)
-      );
+      finalPrice = Number(Math.max(0, finalPrice - cashbackUsed).toFixed(2));
 
       user.cashbackPoints -= usablePoints;
       user.totalCashbackSpent = (user.totalCashbackSpent || 0) + cashbackUsed;
@@ -82,57 +74,32 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     }
 
     // ==========================
-    // ✅ Step 4: CASHBACK TO EARN (1% reward)
+    // ✅ PAYMENT FEE
     // ==========================
-    // ==========================
-    // ✅ Step 4: PAYMENT FEE
-    // ==========================
-
     const paymentMethod = gameData.method || 'pix';
-
     let feePercent = 0;
+    if (paymentMethod === 'card') feePercent = 5.4;
+    if (paymentMethod === 'pix') feePercent = 1;
 
-    if (paymentMethod === 'card') {
-      feePercent = 5.4;
-    }
-
-    if (paymentMethod === 'pix') {
-      feePercent = 1;
-    }
-
-    // ✅ fee AFTER coupon + cashback
-    const feeAmount = Number(
-      ((finalPrice * feePercent) / 100).toFixed(2)
-    );
-
-    // ✅ FINAL AMOUNT USER PAYS
-    const totalAmount = Number(
-      (finalPrice + feeAmount).toFixed(2)
-    );
+    const feeAmount = Number(((finalPrice * feePercent) / 100).toFixed(2));
+    const totalAmount = Number((finalPrice + feeAmount).toFixed(2));
 
     // ==========================
-    // ✅ Step 5: CASHBACK TO EARN
+    // ✅ CASHBACK TO EARN
     // ==========================
-
-    // cashback should be based on paid amount
     const cashbackPercent = 1;
-
-    const cashbackValue = Number(
-      ((totalAmount * cashbackPercent) / 100).toFixed(2)
-    );
+    const cashbackValue = Number(((totalAmount * cashbackPercent) / 100).toFixed(2));
 
     // ==========================
-    // ✅ Step 5: CREATE ORDER
+    // ✅ CREATE ORDER
     // ==========================
     const order = await Order.create({
       user: userId || null,
       isGuest: !userId,
 
-      // Coupon info
       couponCode: appliedCouponCode,
       couponDiscount,
 
-      // Cashback info
       cashbackEarned: cashbackValue,
       cashbackUsed,
       cashbackPointsUsed,
@@ -142,17 +109,16 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
       cpf: gameData.cpf,
       installments: gameData.installments || 1,
       product: productId,
+
+      // ✅ SNAPSHOT — survives product deletion/resync
+      productName: product.name,
+      game: product.categoryName || null,
+
       quantity: qty,
 
-      // Pricing
-      // Pricing
       originalPrice: Number((product.price * qty).toFixed(2)),
-
-      // ✅ actual charged amount
       price: totalAmount,
-
       paymentFee: feeAmount,
-
       totalAmount: totalAmount,
 
       paymentMethod: paymentMethod,
@@ -175,7 +141,6 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
       finalPrice: totalAmount
     });
 
-    // Create payment
     const payment = await paymentService.createPayment({
       amount: totalAmount,
       method: paymentMethod,
@@ -204,8 +169,9 @@ exports.createOrder = async (userId, productId, code, email, gameData) => {
     throw err;
   }
 };
+
 // ==========================
-// ✅ CALCULATE PRICE (NEW)
+// ✅ CALCULATE PRICE
 // ==========================
 exports.calculatePrice = async (productId, code, method = 'pix') => {
 
@@ -217,15 +183,12 @@ exports.calculatePrice = async (productId, code, method = 'pix') => {
 
   let finalPrice = product.price;
 
-  // coupon / influencer
   if (code) {
     const result = await influencerService.applyCode(code, product.price);
     finalPrice = result.finalPrice;
   }
 
-  // ✅ fee logic
   let feePercent = 0;
-
   if (method === 'card') feePercent = 5.4;
   if (method === 'pix') feePercent = 1;
 
@@ -239,6 +202,7 @@ exports.calculatePrice = async (productId, code, method = 'pix') => {
     method
   };
 };
+
 // ✅ USER ORDERS
 exports.getUserOrders = async (userId) => {
   try {
@@ -247,55 +211,33 @@ exports.getUserOrders = async (userId) => {
       .populate('product')
       .sort({ createdAt: -1 });
 
-  return orders.map(o => ({
+    return orders.map(o => ({
+      _id: o._id,
+      title: o.productName || o.product?.name || 'Unknown Product',
+      image: o.product?.image || '',
+      status: o.status,
+      createdAt: o.createdAt,
+      quantity: o.quantity,
 
-  _id: o._id,
+      originalPrice: o.originalPrice,
+      paymentFee: o.paymentFee,
+      totalAmount: o.totalAmount,
+      price: o.price,
 
-  title: o.product?.name || 'Unknown Product',
+      couponCode: o.couponCode,
+      couponDiscount: o.couponDiscount,
 
-  image: o.product?.image || '',
+      cashbackEarned: o.cashbackEarned,
+      cashbackUsed: o.cashbackUsed,
+      cashbackPointsUsed: o.cashbackPointsUsed,
 
-  status: o.status,
+      cashbackCoins: Math.floor((o.cashbackEarned || 0) * 100),
 
-  createdAt: o.createdAt,
+      userGameId: o.userGameId,
+      serverId: o.serverId,
 
-  quantity: o.quantity,
-
-  // ✅ pricing
-  originalPrice: o.originalPrice,
-
-  paymentFee: o.paymentFee,
-
-  totalAmount: o.totalAmount,
-
-  price: o.price,
-
-  // ✅ coupon
-  couponCode: o.couponCode,
-
-  couponDiscount: o.couponDiscount,
-
-  // ✅ cashback
-  cashbackEarned: o.cashbackEarned,
-
-  cashbackUsed: o.cashbackUsed,
-
-  cashbackPointsUsed: o.cashbackPointsUsed,
-
-  // ✅ RETURN SD COINS
-  cashbackCoins: Math.floor(
-    (o.cashbackEarned || 0) * 100
-  ),
-
-  // ✅ game data
-  userGameId: o.userGameId,
-
-  serverId: o.serverId,
-
-  // ✅ product
-  product: o.product
-
-}));
+      product: o.product
+    }));
 
   } catch (err) {
     throw err;
@@ -308,22 +250,65 @@ exports.getAllOrders = async (query) => {
   const limit = parseInt(query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const filter = {};
-
+  const matchStage = {};
   if (query.status && query.status !== 'all') {
-    filter.status = query.status;
+    matchStage.status = query.status;
   }
 
-  const [orders, total] = await Promise.all([
-    Order.find(filter)
-      .populate('user', 'name email')
-      .populate('product', 'name price image')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
+  const pipeline = [
+    { $match: matchStage },
 
-    Order.countDocuments(filter)
-  ]);
+    // ✅ named 'productDoc' so it never collides with the order's own 'product' ObjectId field
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'product',
+        foreignField: '_id',
+        as: 'productDoc'
+      }
+    },
+    { $unwind: { path: '$productDoc', preserveNullAndEmptyArrays: true } },
+  ];
+
+  // ✅ FILTER BY GAME — snapshot first, fallback to live product join (old orders)
+  if (query.game && query.game !== 'all') {
+    pipeline.push({
+      $match: {
+        $expr: {
+          $eq: [
+            { $ifNull: ['$game', '$productDoc.categoryName'] },
+            query.game
+          ]
+        }
+      }
+    });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'user'
+      }
+    },
+    { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+    { $sort: { createdAt: -1 } },
+    {
+      $facet: {
+        data: [
+          { $skip: skip },
+          { $limit: limit }
+        ],
+        totalCount: [{ $count: 'count' }]
+      }
+    }
+  );
+
+  const result = await Order.aggregate(pipeline);
+  const orders = result[0]?.data || [];
+  const total = result[0]?.totalCount?.[0]?.count || 0;
 
   return {
     success: true,
@@ -334,16 +319,28 @@ exports.getAllOrders = async (query) => {
       status: o.status,
       total: o.price,
 
-      // ✅ FIX HERE
-      productName: o.product?.name || 'Unknown Product',
-      image: o.product?.image || '',
+      // ✅ snapshot first, live join fallback, then "Deleted Product" if both missing
+      productName: o.productName || o.productDoc?.name || 'Deleted Product',
+      game: o.game || o.productDoc?.categoryName || 'N/A',
 
+      image: o.productDoc?.image || '',
       user: o.user?.email
     })),
     total,
     page,
     pages: Math.ceil(total / limit)
   };
+};
+
+// ✅ DISTINCT GAMES (combine snapshot history + live products)
+exports.getDistinctGames = async () => {
+  const [orderGames, productGames] = await Promise.all([
+    Order.distinct('game', { game: { $ne: null } }),
+    Product.distinct('categoryName', { categoryName: { $ne: null } })
+  ]);
+
+  const combined = [...new Set([...orderGames, ...productGames])].filter(Boolean);
+  return combined.sort();
 };
 
 // ✅ ADMIN: UPDATE STATUS
@@ -354,7 +351,6 @@ exports.updateOrderStatus = async (orderId, status) => {
   const prevStatus = order.status;
   order.status = status;
 
-  // ✅ GIVE CASHBACK ONLY ON FIRST TIME PAID
   if (status === 'paid' && prevStatus !== 'paid' && order.user) {
     const user = await User.findById(order.user);
 
@@ -365,32 +361,26 @@ exports.updateOrderStatus = async (orderId, status) => {
 
     await user.save();
   }
-await WebhookLog.create({
-  orderId: order._id,
-  type:
-    status === 'paid'
-      ? 'PAYMENT_APPROVED'
-      : 'STATUS_CHANGED',
-  message: `${prevStatus} -> ${status}`,
-  statusBefore: prevStatus,
-  statusAfter: status
-});
+
+  await WebhookLog.create({
+    orderId: order._id,
+    type: status === 'paid' ? 'PAYMENT_APPROVED' : 'STATUS_CHANGED',
+    message: `${prevStatus} -> ${status}`,
+    statusBefore: prevStatus,
+    statusAfter: status
+  });
+
   await order.save();
   return order;
 };
 
-// ✅ RECENT PURCHASES (RETURN CATEGORY INSTEAD OF PRODUCT)
+// ✅ RECENT PURCHASES
 exports.getRecentPurchases = async (limit = 10) => {
 
-  const orders = await Order.find({
-    status: 'paid'
-  })
+  const orders = await Order.find({ status: 'paid' })
     .populate({
       path: 'product',
-      populate: {
-        path: 'category',
-        select: 'name image slug'
-      }
+      populate: { path: 'category', select: 'name image slug' }
     })
     .sort({ createdAt: -1 })
     .limit(limit);
@@ -398,20 +388,12 @@ exports.getRecentPurchases = async (limit = 10) => {
   return orders
     .filter(o => o.product?.category)
     .map(o => ({
-
-      // ✅ CATEGORY DATA
       _id: o.product.category._id,
-
       name: o.product.category.name,
-
       image: o.product.category.image,
-
       slug: o.product.category.slug,
-
       createdAt: o.createdAt
-
     }));
-
 };
 
 exports.getOrderById = async (orderId) => {
@@ -423,6 +405,7 @@ exports.getOrderById = async (orderId) => {
 
   return order;
 };
+
 exports.createPendingOrder = async (userId, productId, email, gameData) => {
 
   const product = await Product.findById(productId);
@@ -433,73 +416,43 @@ exports.createPendingOrder = async (userId, productId, email, gameData) => {
 
   const qty = Number(gameData.qty || 1);
 
-  const subtotal = Number(
-    (product.price * qty).toFixed(2)
-  );
-
-  // ==========================
-  // ✅ PAYMENT FEE
-  // ==========================
+  const subtotal = Number((product.price * qty).toFixed(2));
 
   let feePercent = 0;
+  if ((gameData.method || 'pix') === 'pix') feePercent = 1;
+  if ((gameData.method || 'pix') === 'card') feePercent = 5.4;
 
-  if ((gameData.method || 'pix') === 'pix') {
-    feePercent = 1;
-  }
-
-  if ((gameData.method || 'pix') === 'card') {
-    feePercent = 5.4;
-  }
-
-  const feeAmount = Number(
-    ((subtotal * feePercent) / 100).toFixed(2)
-  );
-
-  const totalAmount = Number(
-    (subtotal + feeAmount).toFixed(2)
-  );
-
-  // ==========================
-  // ✅ CREATE ORDER
-  // ==========================
+  const feeAmount = Number(((subtotal * feePercent) / 100).toFixed(2));
+  const totalAmount = Number((subtotal + feeAmount).toFixed(2));
 
   const order = await Order.create({
-
     user: userId || null,
-
     isGuest: !userId,
-
     email,
-
     product: productId,
+
+    // ✅ SNAPSHOT
+    productName: product.name,
+    game: product.categoryName || null,
 
     quantity: qty,
 
     originalPrice: subtotal,
-
-    // ✅ actual payable amount
     price: totalAmount,
-
     paymentFee: feeAmount,
-
     totalAmount: totalAmount,
 
     paymentMethod: gameData.method || 'pix',
 
     userGameId: gameData.user_id,
-
     serverId: gameData.server_id,
-
     zoneId: gameData.zone_id,
-
     nickname: gameData.nickname,
 
     status: 'pending_payment',
-
     supplierStatus: 'pending',
 
     buyerName: 'PENDING',
-
     cpf: '00000000000'
   });
 
@@ -528,9 +481,7 @@ exports.getDashboard = async () => {
       .sort({ createdAt: -1 })
       .limit(10),
 
-    WebhookLog.countDocuments({
-      createdAt: { $gte: last15Min }
-    })
+    WebhookLog.countDocuments({ createdAt: { $gte: last15Min } })
   ]);
 
   return {
@@ -550,10 +501,10 @@ exports.getDashboard = async () => {
     ordersList: allOrders.map(o => ({
       id: o._id,
       orderId: `#ORD-${o._id.toString().slice(-5)}`,
-      game: o.product?.name || 'Unknown',
-      product: o.product?.name || 'Unknown',
+      game: o.game || o.product?.name || 'Unknown',
+      product: o.productName || o.product?.name || 'Unknown',
       status: o.status,
-      supplierStatus: o.supplierStatus, // 🔥 KEY
+      supplierStatus: o.supplierStatus,
       createdAt: o.createdAt
     }))
   };
@@ -566,19 +517,10 @@ exports.getUserRecentPurchases = async (userId, limit = 10) => {
     return [];
   }
 
-  // ✅ ADD HERE
-  console.log("REQ USER ID:", userId);
-
-  const orders = await Order.find({
-    user: userId,
-    status: 'paid'
-  })
+  const orders = await Order.find({ user: userId, status: 'paid' })
     .populate('product')
     .sort({ createdAt: -1 })
     .limit(limit);
-
-  // ✅ ADD HERE
-  console.log("ORDERS FOUND:", orders.length);
 
   return orders
     .filter(o => o.product)

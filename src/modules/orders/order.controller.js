@@ -40,7 +40,15 @@ exports.create = async (req, res, next) => {
     next(err);
   }
 };
-
+// ✅ DISTINCT GAMES FOR FILTER DROPDOWN
+exports.getGames = async (req, res, next) => {
+  try {
+    const games = await service.getDistinctGames();
+    res.json({ success: true, data: games });
+  } catch (err) {
+    next(err);
+  }
+};
 // ✅ USER ORDERS
 exports.getMyOrders = async (req, res, next) => {
   try {

@@ -69,10 +69,8 @@ exports.getOne = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
+    const data = { ...req.body };
 
-    let imageUrl = req.body.image || null;
-
-    // 🔥 HANDLE IMAGE UPLOAD
     if (req.file) {
       const result = await s3.upload({
         Bucket: process.env.AWS_BUCKET,
@@ -80,16 +78,11 @@ exports.update = async (req, res, next) => {
         Body: req.file.buffer,
         ContentType: req.file.mimetype
       }).promise();
-
-      imageUrl = result.Location;
+      data.image = result.Location;
+    } else if (req.body.image === undefined) {
+      delete data.image;
     }
 
-    const data = {
-      ...req.body,
-      image: imageUrl // ✅ IMPORTANT
-    };
-
-    // ❌ block non-admin
     if (req.user.role !== 'admin') {
       delete data.isActive;
     }
@@ -98,7 +91,7 @@ exports.update = async (req, res, next) => {
 
     res.json({
       ...product.toObject(),
-      forms: product.category?.forms || [] // 🔥 ADD THIS
+      forms: product.category?.forms || []
     });
   } catch (err) {
     next(err);

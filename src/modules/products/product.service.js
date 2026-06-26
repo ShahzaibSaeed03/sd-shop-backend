@@ -131,6 +131,24 @@ exports.getProductById = async (id, user) => {
 
 exports.updateProduct = async (id, data) => {
 
+  // ✅ "fixedPrice" ko "customPrice" pe map karo — schema me field ka naam yehi hai
+  if (data.fixedPrice !== undefined) {
+    data.customPrice = data.fixedPrice;
+    delete data.fixedPrice;
+  }
+
+  if (data.customPrice !== undefined) {
+    const customPrice = data.customPrice === null || data.customPrice === ''
+      ? null
+      : Number(data.customPrice);
+
+    if (customPrice !== null && (isNaN(customPrice) || customPrice < 0)) {
+      throw new Error('customPrice must be a positive number');
+    }
+
+    data.customPrice = customPrice;
+  }
+
   if (data.markup !== undefined) {
     const markup = Number(data.markup);
 
@@ -141,7 +159,6 @@ exports.updateProduct = async (id, data) => {
     data.markup = markup;
   }
 
-  // ✅ displayName allowed
   if (data.displayName !== undefined) {
     data.displayName = data.displayName.trim();
   }
