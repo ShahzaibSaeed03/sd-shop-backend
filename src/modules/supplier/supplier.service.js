@@ -17,6 +17,10 @@ const FIXED_CATEGORIES =
 const BASE_URL = process.env.SUPPLIER_BASE_URL || 'https://www.lapakgaming.com';
 const API_KEY = process.env.SUPPLIER_API_KEY;
 
+// 🔹 EXTRACT BASE CODE (strip provider/region suffix)
+// e.g. 'ZZZ300-S116-br' -> 'ZZZ300' | 'AB1580_110' -> 'AB1580_110' (no -S suffix, untouched)
+const getBaseCode = (code) => code.split(/-S\d/)[0];
+
 // 🔹 GAME REQUIREMENTS MAPPING
 const getGameRequirements = (gameName) => {
   // Games that only need User ID
@@ -596,13 +600,22 @@ exports.syncProducts = async () => {
 
     for (const fp of FIXED_PRODUCTS) {
 
+      // 🔧 FIX: match by base code (provider-agnostic) instead of exact
+      // full supplierId, since Lapak's provider/region suffix (e.g. -S116-br)
+      // changes over time as cheapest providers rotate or go out of stock.
+      const baseCode = getBaseCode(fp.supplierId);
+
       const allProviders = products.filter(p =>
-        p.code === fp.supplierId &&
+        getBaseCode(p.code) === baseCode &&
         p.price > 0 &&
         p.status !== 'empty'
       );
 
       if (allProviders.length === 0) {
+
+        // 🔍 DEBUG: temporary — log similar codes to help diagnose remaining misses
+        const similar = products.filter(p => getBaseCode(p.code).startsWith(baseCode.slice(0, 3)));
+        console.log(`🔎 ${fp.name} (${baseCode}) → similar codes found:`, similar.map(p => p.code).slice(0, 5));
 
         stats.missing++;
         stats.missingNames.push(fp.name);
