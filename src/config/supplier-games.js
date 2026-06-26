@@ -6,29 +6,38 @@ module.exports = [
   // ZENLESS ZONE ZERO
   // =========================================
 
-  { supplierCategory: 'ZZZ', name: '60 Order Crystal', supplierId: 'MSL60-S50' },
-  { supplierCategory: 'ZZZ', name: '300 Order Crystal', supplierId: 'MSL300-S50' },
-  { supplierCategory: 'ZZZ', name: '980 Order Crystal', supplierId: 'MSL980-S50' },
-  { supplierCategory: 'ZZZ', name: '1980 Order Crystal', supplierId: 'MSL1980-S50' },
-  { supplierCategory: 'ZZZ', name: '3280 Order Crystal', supplierId: 'MSL3280-S50' },
-  { supplierCategory: 'ZZZ', name: '6480 Order Crystal', supplierId: 'MSL6480-S50' },
+  { supplierCategory: 'ZZZ', name: 'Inter-Knot Membership', supplierId: 'ZZZPASS-S1-br' },
+  { supplierCategory: 'ZZZ', name: '60 Monochrome', supplierId: 'ZZZ60-S1-br' },
+  { supplierCategory: 'ZZZ', name: '300 + 30 Monochrome', supplierId: 'ZZZ300-S116-br' },
+  { supplierCategory: 'ZZZ', name: '980 + 110 Monochrome', supplierId: 'ZZZ980-S117-br' },
+  { supplierCategory: 'ZZZ', name: '1980 + 260 Monochrome', supplierId: 'ZZZ1980-S116-br' },
+  { supplierCategory: 'ZZZ', name: '3280 + 600 Monochrome', supplierId: 'ZZZ3280-S117-br' },
+  { supplierCategory: 'ZZZ', name: '6480 + 1600 Monochrome', supplierId: 'ZZZ6480-S116-br' },
 
   // =========================================
   // WUTHERING WAVES
   // =========================================
 
-  { supplierCategory: 'WUTWVS', name: '60 Echo Beads', supplierId: 'WWMTPC60-S126' },
-  { supplierCategory: 'WUTWVS', name: '180 Echo Beads', supplierId: 'WWMTPC180-S126' },
-  { supplierCategory: 'WUTWVS', name: '300 Echo Beads', supplierId: 'WWMTPC300-S126' },
-  { supplierCategory: 'WUTWVS', name: '600 Echo Beads', supplierId: 'WWMTPC600-S126' },
-  { supplierCategory: 'WUTWVS', name: '900 Echo Beads', supplierId: 'WWMTPC900-S126' },
-  { supplierCategory: 'WUTWVS', name: '1800 Echo Beads', supplierId: 'WWMTPC1800-S126' },
-  { supplierCategory: 'WUTWVS', name: '3000 Echo Beads', supplierId: 'WWMTPC3000-S126' },
-  { supplierCategory: 'WUTWVS', name: '6000 Echo Beads', supplierId: 'WWMTPC6000-S126' },
-  { supplierCategory: 'WUTWVS', name: '12000 Echo Beads', supplierId: 'WWMTPC12000-S126' },
-  { supplierCategory: 'WUTWVS', name: 'Monthly Pass', supplierId: 'WWMTPCMP-S126' },
-  { supplierCategory: 'WUTWVS', name: 'Elite Battle Pass', supplierId: 'WWMTPCEBP-S126' },
-  { supplierCategory: 'WUTWVS', name: 'Premium Battle Pass', supplierId: 'WWMTPCPBP-S126' },
+  { supplierCategory: 'WUTWVS', name: 'Lunite Subscription', supplierId: 'WUTWVSLS1-S96A' },
+  { supplierCategory: 'WUTWVS', name: '60 Lunites', supplierId: 'WUTWVS60-S96A' },
+  { supplierCategory: 'WUTWVS', name: '300 Lunites', supplierId: 'WUTWVS300-S96A' },
+  { supplierCategory: 'WUTWVS', name: '980 Lunites', supplierId: 'WUTWVS980-S96A' },
+  { supplierCategory: 'WUTWVS', name: '1980 Lunites', supplierId: 'WUTWVS1980-S96A' },
+  { supplierCategory: 'WUTWVS', name: '3280 Lunites', supplierId: 'WUTWVS3280-S19' },
+  { supplierCategory: 'WUTWVS', name: '6480 Lunites', supplierId: 'WUTWVS6480-S19' },
+
+  { supplierCategory: 'WWM', name: '60 Echo Beads', supplierId: 'WWMTPC60-S126' },
+  { supplierCategory: 'WWM', name: '180 Echo Beads', supplierId: 'WWMTPC180-S126' },
+  { supplierCategory: 'WWM', name: '300 Echo Beads', supplierId: 'WWMTPC300-S126' },
+  { supplierCategory: 'WWM', name: '600 Echo Beads', supplierId: 'WWMTPC600-S126' },
+  { supplierCategory: 'WWM', name: '900 Echo Beads', supplierId: 'WWMTPC900-S126' },
+  { supplierCategory: 'WWM', name: '1800 Echo Beads', supplierId: 'WWMTPC1800-S126' },
+  { supplierCategory: 'WWM', name: '3000 Echo Beads', supplierId: 'WWMTPC3000-S126' },
+  { supplierCategory: 'WWM', name: '6000 Echo Beads', supplierId: 'WWMTPC6000-S126' },
+  { supplierCategory: 'WWM', name: '12000 Echo Beads', supplierId: 'WWMTPC12000-S126' },
+  { supplierCategory: 'WWM', name: 'Monthly Pass', supplierId: 'WWMTPCMP-S126' },
+  { supplierCategory: 'WWM', name: 'Elite Battle Pass', supplierId: 'WWMTPCEBP-S126' },
+  { supplierCategory: 'WWM', name: 'Premium Battle Pass', supplierId: 'WWMTPCPBP-S126' },
 
   // =========================================
   // HONKAI STAR RAIL
@@ -39,12 +48,13 @@ module.exports = [
   // Lapak data ke BLSRSC prefix ko HSR se map kiya gaya hai (Starfire Essence / Oneiric Shard nahi tha).
   // Agar yeh galat ho to BLSR category mein move karna.
 
-  { supplierCategory: 'HSR', name: '60 Oneiric Shard', supplierId: 'HSR60-S50' },
-  { supplierCategory: 'HSR', name: '300 Oneiric Shard', supplierId: 'HSR300-S50' },
-  { supplierCategory: 'HSR', name: '980 Oneiric Shard', supplierId: 'HSR980-S50' },
-  { supplierCategory: 'HSR', name: '1980 Oneiric Shard', supplierId: 'HSR1980-S50' },
-  { supplierCategory: 'HSR', name: '3280 Oneiric Shard', supplierId: 'HSR3280-S50' },
-  { supplierCategory: 'HSR', name: '6480 Oneiric Shard', supplierId: 'HSR6480-S50' },
+  { supplierCategory: 'HSR', name: 'Express Supply Pass', supplierId: 'HSTRESP-S117-br' },
+  { supplierCategory: 'HSR', name: '60 Oneiric Shard', supplierId: 'HSTR60-S116-br' },
+  { supplierCategory: 'HSR', name: '300 + 30 Oneiric Shard', supplierId: 'HSTR300-S117-br' },
+  { supplierCategory: 'HSR', name: '980 + 110 Oneiric Shard', supplierId: 'HSTR980-S117-br' },
+  { supplierCategory: 'HSR', name: '1980 + 260 Oneiric Shard', supplierId: 'HSTR1980-S117-br' },
+  { supplierCategory: 'HSR', name: '3280 + 600 Oneiric Shard', supplierId: 'HSTR3280-S116-br' },
+  { supplierCategory: 'HSR', name: '6480 + 1600 Oneiric Shard', supplierId: 'HSTR6480-S116-br' },
 
   // =========================================
   // BLEACH SOUL RESONANCE
@@ -61,13 +71,13 @@ module.exports = [
   // GENSHIN IMPACT
   // =========================================
 
-  { supplierCategory: 'GENSHIN', name: '60 Genesis Crystals', supplierId: 'GEN60-S50' },
-  { supplierCategory: 'GENSHIN', name: '300 Genesis Crystals', supplierId: 'GEN300-S50' },
-  { supplierCategory: 'GENSHIN', name: '980 Genesis Crystals', supplierId: 'GEN980-S50' },
-  { supplierCategory: 'GENSHIN', name: '1980 Genesis Crystals', supplierId: 'GEN1980-S50' },
-  { supplierCategory: 'GENSHIN', name: '3280 Genesis Crystals', supplierId: 'GEN3280-S50' },
-  { supplierCategory: 'GENSHIN', name: '6480 Genesis Crystals', supplierId: 'GEN6480-S50' },
-
+  { supplierCategory: 'GENSHIN', name: 'Blessing Welkin Moon', supplierId: 'GIWELKIN-S113-br' },
+  { supplierCategory: 'GENSHIN', name: '60 Crystals', supplierId: 'GI60-S113-br' },
+  { supplierCategory: 'GENSHIN', name: '300 + 30 Crystals', supplierId: 'GI330-S113-br' },
+  { supplierCategory: 'GENSHIN', name: '980 + 110 Crystals', supplierId: 'GI1090-S113-br' },
+  { supplierCategory: 'GENSHIN', name: '1980 + 260 Crystals', supplierId: 'GI2240-S113-br' },
+  { supplierCategory: 'GENSHIN', name: '3280 + 600 Crystals', supplierId: 'GI3940-S27-br' },
+  { supplierCategory: 'GENSHIN', name: '6480 + 1600 Crystals', supplierId: 'GI8080-S113-br' },
   // =========================================
   // NBA INFINITE
   // =========================================
@@ -81,7 +91,7 @@ module.exports = [
   { supplierCategory: 'NBAI', name: '5000 IC', supplierId: 'NBAI5000-S50-th' },
   { supplierCategory: 'NBAI', name: '10000 IC', supplierId: 'NBAI10000-S50-th' },
 
- 
+
 
   // =========================================
   // JUJUTSU KAISEN PHANTOM PARADE
@@ -342,18 +352,42 @@ module.exports = [
   { supplierCategory: 'FF', name: '5600 + 560 Diamonds', supplierId: 'FF5600_560-S116-br' },
   { supplierCategory: 'FF', name: '22400 + 2240 Diamonds', supplierId: 'FF22400_2246-S116-br' },
 
-  // =========================================
-  // MOONFLOW (Supplier code: SIV — game TBD)
-  // =========================================
-  // NOTE: "Moonflow" game unclear from supplier codes (SIVBD prefix).
-  // No matching category in supplier-categories.js — needs a new category added
-  // or mapped to correct game. Placeholder used below.
 
-  { supplierCategory: 'SIV', name: '519 Moonflow', supplierId: 'SIVBD519-S1' },
-  { supplierCategory: 'SIV', name: '1039 Moonflow', supplierId: 'SIVBD1039-S1' },
-  { supplierCategory: 'SIV', name: '2079 Moonflow', supplierId: 'SIVBD2079-S1' },
-  { supplierCategory: 'SIV', name: '3134 Moonflow', supplierId: 'SIVBD3134-S1' },
-  { supplierCategory: 'SIV', name: '5574 Moonflow', supplierId: 'SIVBD5774-S1' },
-  { supplierCategory: 'SIV', name: '8399 Moonflow', supplierId: 'SIVBD8399-S1' },
 
+  // =========================================
+  // SILVER AND BLOOD
+  // =========================================
+
+  { supplierCategory: 'SAB', name: '519 Moonflow', supplierId: 'SIVBD519-S1' },
+  { supplierCategory: 'SAB', name: '1039 Moonflow', supplierId: 'SIVBD1039-S1' },
+  { supplierCategory: 'SAB', name: '2079 Moonflow', supplierId: 'SIVBD2079-S1' },
+  { supplierCategory: 'SAB', name: '3134 Moonflow', supplierId: 'SIVBD3134-S1' },
+  { supplierCategory: 'SAB', name: '5574 Moonflow', supplierId: 'SIVBD5774-S1' },
+  { supplierCategory: 'SAB', name: '8399 Moonflow', supplierId: 'SIVBD8399-S1' },
+
+
+  // =========================================
+  // BLUE PROTOCOL STAR RESONANCE
+  // =========================================
+
+  { supplierCategory: 'STARRESONANCE', name: '60 + 6 Rose Gem', supplierId: 'BPSRGLO66-S116' },
+  { supplierCategory: 'STARRESONANCE', name: '300 + 30 Rose Gem', supplierId: 'BPSRGLO330-S116' },
+  { supplierCategory: 'STARRESONANCE', name: '980 + 120 Rose Gem', supplierId: 'BPSRGLO1100-S116' },
+  { supplierCategory: 'STARRESONANCE', name: '1980 + 288 Rose Gem', supplierId: 'BPSRGLO2268-S116' },
+  { supplierCategory: 'STARRESONANCE', name: '3280 + 528 Rose Gem', supplierId: 'BPSRGLO3808-S116' },
+  { supplierCategory: 'STARRESONANCE', name: '6480 + 1296 Rose Gem', supplierId: 'BPSRGLO7776-S116' },
+  { supplierCategory: 'STARRESONANCE', name: 'Monthly Card', supplierId: 'BPSRGLOMC-S116' },
+  { supplierCategory: 'STARRESONANCE', name: 'Void Pass I - Advanced', supplierId: 'BPSRGLOVP1ADV-S95-ph' },
+  { supplierCategory: 'STARRESONANCE', name: 'Void Pass I - Supreme', supplierId: 'BPSRGLOVP1SUP-S95-ph' },
+
+  // =========================================
+// MARVEL RIVALS
+// =========================================
+
+{ supplierCategory: 'MR', name: '100 Lattices', supplierId: 'MRTU100-S95' },
+{ supplierCategory: 'MR', name: '500 Lattices', supplierId: 'MRTU500-S95' },
+{ supplierCategory: 'MR', name: '1000 Lattices', supplierId: 'MRTU1000-S95' },
+{ supplierCategory: 'MR', name: '2180 Lattices', supplierId: 'MRTU2180-S95' },
+{ supplierCategory: 'MR', name: '5680 Lattices', supplierId: 'MRTU5680-S95' },
+{ supplierCategory: 'MR', name: '11680 Lattices', supplierId: 'MRTU11680-S95' },
 ];
