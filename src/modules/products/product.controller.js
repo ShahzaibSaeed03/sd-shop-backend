@@ -166,10 +166,22 @@ exports.bulkUpdateMarkup = async (req, res, next) => {
 exports.updateMarkupBulk = async (req, res) => {
   const { markup } = req.body;
 
-  await Product.updateMany(
-    {}, // all products
-    { $set: { markup } }
-  );
+await Product.updateMany(
+  {
+    $or: [
+      { supplierCategory: fp.supplierCategory, name: fp.name },
+      { supplierCategory: fp.supplierCategory, displayName: fp.name },
+      { supplierCategory: fp.supplierCategory, supplierId: fp.supplierId },
+      { supplierId: { $regex: `^${getBaseCode(fp.supplierId)}`, $options: 'i' } }
+    ]
+  },
+  {
+    $set: {
+      isSupplierAvailable: false,
+      lastSyncedAt: new Date()
+    }
+  }
+);
 
   res.json({ message: 'Bulk updated' });
 };
