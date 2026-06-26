@@ -74,39 +74,29 @@ exports.getSyncHistory = async (req, res, next) => {
 // ============================
 exports.cleanupStale = async (req, res, next) => {
   try {
-    const VALID_CATEGORIES = [
-      'WUTWVS', 'HSR', 'HSTR', 'HSTRLOG', 'HSTRUS', 'HSTRVGP',
-      'GENSHIN', 'GI', 'GILOG', 'GIUS', 'GIVGP',
-      'ZZZ', 'ZZZUS'
-    ];
-
     if (req.query.confirm !== 'yes') {
       const stale = await Product.find({
-        supplierCategory: { $nin: VALID_CATEGORIES }
-      }).select('name supplierCategory price image markup').lean();
+        isSupplierAvailable: false
+      }).select('name supplierCategory price isSupplierAvailable').lean();
 
       return res.json({
         success: false,
         message: 'Add ?confirm=yes to URL to actually delete',
         wouldDelete: stale.length,
-        preview: stale.map(p => ({
-          name: p.name,
-          category: p.supplierCategory,
-          price: p.price,
-          hasImage: !!p.image,
-          markup: p.markup
-        }))
+        preview: stale
       });
     }
 
     const result = await Product.deleteMany({
-      supplierCategory: { $nin: VALID_CATEGORIES }
+      isSupplierAvailable: false
     });
+
+    res.set('Cache-Control', 'no-store');
 
     res.json({
       success: true,
       deleted: result.deletedCount,
-      message: `Removed ${result.deletedCount} stale products`
+      message: `Removed ${result.deletedCount} unavailable stale products`
     });
 
   } catch (err) {
