@@ -5,6 +5,11 @@ module.exports = [
   // =========================================
   // ZENLESS ZONE ZERO
   // =========================================
+  // ⚠️ PENDING: "monochrome" / "inter-knot" found 0 matches anywhere in the
+  // full catalog (all regions). Either Lapak discontinued ZZZ top-up, or it
+  // uses a totally different naming convention (like HSTR→HSTRLOG happened).
+  // DO NOT delete these yet — waiting on category_code='ZZZLOG' debug dump
+  // to confirm real codes before updating.
 
   { supplierCategory: 'ZZZ', name: 'Inter-Knot Membership', supplierId: 'ZZZPASS-S1-br' },
   { supplierCategory: 'ZZZ', name: '60 Monochrome', supplierId: 'ZZZ60-S1-br' },
@@ -42,19 +47,21 @@ module.exports = [
   // =========================================
   // HONKAI STAR RAIL
   // =========================================
+  // ✅ FIXED: real Lapak prefix is "HSTRLOG", not "HSTR" — confirmed via
+  // category_code=HSTRLOG dump (e.g. HSTRLOG60, HSTRLOG300, HSTRLOG1980,
+  // HSTRLOG3280, HSTRLOGSP). 6480 pack not yet confirmed individually —
+  // HSTRLOG32400 was found named "6480 Oneiric Shard + Bonus x 5" which
+  // looks like a 5x bundle, not the single 6480 denomination. Verify on
+  // next sync; if no plain HSTRLOG6480 exists, this entry may need removing
+  // or remapping to the bundle.
 
-  // NOTE: Lapak data mein "Spiritual Jade" = BLSR prefix tha lekin
-  // supplier-categories.js mein HSR alag aur BLSR = Bleach Soul Resonance hai.
-  // Lapak data ke BLSRSC prefix ko HSR se map kiya gaya hai (Starfire Essence / Oneiric Shard nahi tha).
-  // Agar yeh galat ho to BLSR category mein move karna.
-
-  { supplierCategory: 'HSR', name: 'Express Supply Pass', supplierId: 'HSTRESP-S117-br' },
-  { supplierCategory: 'HSR', name: '60 Oneiric Shard', supplierId: 'HSTR60-S116-br' },
-  { supplierCategory: 'HSR', name: '300 + 30 Oneiric Shard', supplierId: 'HSTR300-S117-br' },
-  { supplierCategory: 'HSR', name: '980 + 110 Oneiric Shard', supplierId: 'HSTR980-S117-br' },
-  { supplierCategory: 'HSR', name: '1980 + 260 Oneiric Shard', supplierId: 'HSTR1980-S117-br' },
-  { supplierCategory: 'HSR', name: '3280 + 600 Oneiric Shard', supplierId: 'HSTR3280-S116-br' },
-  { supplierCategory: 'HSR', name: '6480 + 1600 Oneiric Shard', supplierId: 'HSTR6480-S116-br' },
+  { supplierCategory: 'HSR', name: 'Express Supply Pass', supplierId: 'HSTRLOGSP-S60' },
+  { supplierCategory: 'HSR', name: '60 Oneiric Shard', supplierId: 'HSTRLOG60-S59' },
+  { supplierCategory: 'HSR', name: '300 + 30 Oneiric Shard', supplierId: 'HSTRLOG300-S59' },
+  { supplierCategory: 'HSR', name: '980 + 110 Oneiric Shard', supplierId: 'HSTRLOG980-S59' },
+  { supplierCategory: 'HSR', name: '1980 + 260 Oneiric Shard', supplierId: 'HSTRLOG1980-S59' },
+  { supplierCategory: 'HSR', name: '3280 + 600 Oneiric Shard', supplierId: 'HSTRLOG3280-S59' },
+  { supplierCategory: 'HSR', name: '6480 + 1600 Oneiric Shard', supplierId: 'HSTRLOG6480-S59' },
 
   // =========================================
   // BLEACH SOUL RESONANCE
@@ -70,8 +77,14 @@ module.exports = [
   // =========================================
   // GENSHIN IMPACT
   // =========================================
+  // ✅ PARTIALLY FIXED: "Blessing Welkin Moon" real prefix confirmed as
+  // "GILOGWELKIN" (category_code=GILOG). Crystal denominations (60/300/980...)
+  // still pending — "crystal" keyword search is flooded by Tower of Fantasy
+  // products, so these are left as-is until category_code=GILOG dump confirms
+  // the real group codes (likely GILOG60, GILOG330, etc. — same pattern as
+  // HSTR→HSTRLOG, but not yet verified).
 
-  { supplierCategory: 'GENSHIN', name: 'Blessing Welkin Moon', supplierId: 'GIWELKIN-S113-br' },
+  { supplierCategory: 'GENSHIN', name: 'Blessing Welkin Moon', supplierId: 'GILOGWELKIN-S60' },
   { supplierCategory: 'GENSHIN', name: '60 Crystals', supplierId: 'GI60-S113-br' },
   { supplierCategory: 'GENSHIN', name: '300 + 30 Crystals', supplierId: 'GI330-S113-br' },
   { supplierCategory: 'GENSHIN', name: '980 + 110 Crystals', supplierId: 'GI1090-S113-br' },
@@ -220,6 +233,11 @@ module.exports = [
   // =========================================
   // VALORANT
   // =========================================
+  // ⚠️ PENDING: real current denominations are 375/650/1350/2100/3600/7500 VP,
+  // not 400/815/1700/3085/4450/9185. This is a genuine Riot/Lapak repricing,
+  // not a code-suffix issue. Awaiting client (Bruno) confirmation on whether
+  // to update denominations/names to match, or keep as-is and treat as
+  // permanently out of stock. NOT changed yet — business decision pending.
 
   { supplierCategory: 'VAL', name: '400 VP', supplierId: 'VVAL400BR-S22-br' },
   { supplierCategory: 'VAL', name: '815 VP', supplierId: 'VVAL815BR-S22-br' },
