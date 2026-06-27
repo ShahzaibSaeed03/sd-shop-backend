@@ -356,18 +356,20 @@ const mapGame = (p) => {
 // 🔹 AXIOS INSTANCE (REUSABLE)
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 30000, // 🔧 15s → 30s (Lapak slow on large regions like 'id')
   headers: {
     Accept: 'application/json'
   }
 });
 axiosRetry(api, {
   retries: 3,
-  retryDelay: (count) => count * 1000,
+  retryDelay: (count) => count * 1500,
   retryCondition: (error) =>
     error.code === 'EAI_AGAIN' ||
     error.code === 'ECONNRESET' ||
-    error.code === 'ENOTFOUND'
+    error.code === 'ENOTFOUND' ||
+    error.code === 'ECONNABORTED' || // 🔧 timeout errors now retried
+    axiosRetry.isNetworkOrIdempotentRequestError(error)
 });
 // 🔹 AUTH HEADER HELPER (supports both formats)
 const getAuthHeaders = () => ({
@@ -553,24 +555,25 @@ exports.syncProducts = async () => {
 
     const products = await exports.fetchProducts();
 
-    // 🔍 TEMP DEBUG — keyword search to find current real codes for stale groups
-    // Remove this block once you've copied the codes into supplier-games.js
-    const DEBUG_KEYWORDS = [
-      { label: 'ZZZ Monochrome', keyword: 'monochrome' },
-      { label: 'ZZZ Pass', keyword: 'inter-knot' },
-      { label: 'HSR Oneiric', keyword: 'oneiric' },
-      { label: 'HSR Express Pass', keyword: 'express supply' },
-      { label: 'Genshin Crystals', keyword: 'crystal' },
-      { label: 'Genshin Welkin', keyword: 'welkin' }
-    ];
+    // 🔍 TEMP DEBUG — dump ALL unique groups under suspected real category_codes
+    // (avoids keyword noise like "crystal" matching Tower of Fantasy products)
+    // Remove this block once ZZZ/Genshin codes are finalized in supplier-games.js
+    const DEBUG_CATEGORY_CODES = ['ZZZLOG', 'ZZZ', 'HSTRLOG', 'GILOG', 'GI'];
 
-    DEBUG_KEYWORDS.forEach(({ label, keyword }) => {
-      const matches = products.filter(p =>
-        p.name?.toLowerCase().includes(keyword.toLowerCase())
-      );
-      console.log(`\n🔍 [${label}] keyword "${keyword}" → ${matches.length} matches`);
-      matches.slice(0, 15).forEach(p => {
-        console.log(`   code=${p.code} | group=${p.group_product_code} | category_code=${p.category_code} | name="${p.name}" | price=${p.price} | status=${p.status}`);
+    DEBUG_CATEGORY_CODES.forEach(catCode => {
+      const matches = products.filter(p => p.category_code === catCode);
+
+      // dedupe by group_product_code so we see each denomination once
+      const seenGroups = new Set();
+      const uniqueGroups = matches.filter(p => {
+        if (seenGroups.has(p.group_product_code)) return false;
+        seenGroups.add(p.group_product_code);
+        return true;
+      });
+
+      console.log(`\n🔍 [category_code = ${catCode}] → ${matches.length} total, ${uniqueGroups.length} unique groups`);
+      uniqueGroups.slice(0, 30).forEach(p => {
+        console.log(`   group=${p.group_product_code} | code=${p.code} | name="${p.name}" | price=${p.price} | status=${p.status}`);
       });
     });
 
@@ -581,6 +584,7 @@ exports.syncProducts = async () => {
     valMatches.slice(0, 20).forEach(p => {
       console.log(`   code=${p.code} | group=${p.group_product_code} | category_code=${p.category_code} | name="${p.name}" | price=${p.price} | status=${p.status}`);
     });
+
 
     const categories = await Category.find({});
     const categoryMap = {};
