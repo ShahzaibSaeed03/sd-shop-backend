@@ -783,6 +783,139 @@ if (
       });
     }
 
+    // ============================================================
+    // 🆕 AUTO-DISCOVERY — catch new/untracked products per category
+    // ============================================================
+    // For every category we manage, find Lapak's real category_code
+    // aliases (already built above in categoryMap), gather every group
+    // Lapak currently sells under those aliases, and for any group NOT
+    // already covered by FIXED_PRODUCTS, auto-create it as a live
+    // product using Lapak's own name + cheapest available price.
+    //
+    // ⚠️ No manual review step — this goes straight to isActive:true.
+    // If Lapak's lineup includes something irrelevant (a subscription
+    // bundle, a different-currency gift card, etc.) it WILL show up on
+    // the website. Deactivate it from the admin panel if that happens —
+    // no file edit / redeploy needed.
+
+    // Build: internal category code -> Set of Lapak category_code aliases
+    const aliasesByInternalCode = {};
+    Object.keys(categoryMap).forEach(lapakCode => {
+      const internalCode = categoryMap[lapakCode].code;
+      if (!aliasesByInternalCode[internalCode]) {
+        aliasesByInternalCode[internalCode] = new Set();
+      }
+      aliasesByInternalCode[internalCode].add(lapakCode);
+    });
+
+    // Build: internal category code -> Set of base codes already tracked
+    // by FIXED_PRODUCTS (so we don't duplicate-create what's already managed)
+    const trackedBaseCodesByCategory = {};
+    FIXED_PRODUCTS.forEach(fp => {
+      if (!trackedBaseCodesByCategory[fp.supplierCategory]) {
+        trackedBaseCodesByCategory[fp.supplierCategory] = new Set();
+      }
+      trackedBaseCodesByCategory[fp.supplierCategory].add(getBaseCode(fp.supplierId));
+    });
+
+    stats.autoDiscovered = 0;
+    stats.autoDiscoveredNames = [];
+    const autoOps = [];
+    const seenGroupCodesThisRun = new Set();
+
+    for (const internalCode of Object.keys(aliasesByInternalCode)) {
+
+      const aliases = aliasesByInternalCode[internalCode];
+      const trackedBaseCodes = trackedBaseCodesByCategory[internalCode] || new Set();
+      const category = categoryMap[internalCode];
+
+      // all Lapak products under any alias of this category
+      const categoryProducts = products.filter(p => aliases.has(p.category_code));
+
+      // group by Lapak's own group_product_code (cleaner than re-deriving base code)
+      const groupCodes = new Set(categoryProducts.map(p => p.group_product_code));
+
+      groupCodes.forEach(groupCode => {
+        if (!groupCode) return;
+        if (trackedBaseCodes.has(groupCode)) return; // already managed by FIXED_PRODUCTS
+        if (seenGroupCodesThisRun.has(groupCode)) return; // already auto-added this run
+
+        const groupProviders = categoryProducts.filter(p =>
+          p.group_product_code === groupCode &&
+          p.price > 0 &&
+          p.status !== 'empty'
+        );
+
+        if (groupProviders.length === 0) return; // nothing in stock right now, skip silently
+
+        groupProviders.sort((a, b) => a.price - b.price);
+        const gPrices = groupProviders.map(p => p.price);
+        const gMedian = gPrices[Math.floor(gPrices.length / 2)];
+        const validProviders = groupProviders.filter(p => p.price <= gMedian * 3);
+        if (validProviders.length === 0) return;
+
+        const cheapest = validProviders[0];
+        const brlPrice = Math.max(1, Math.ceil(cheapest.price * IDR_TO_BRL));
+        const productName = cheapest.name; // use Lapak's own name — not in our config
+
+        const allProvidersData = validProviders.map(p => ({
+          code: p.provider_code,
+          fullCode: p.code,
+          price: p.price,
+          converted: parseFloat((p.price * IDR_TO_BRL).toFixed(2)),
+          status: p.status
+        }));
+
+        seenGroupCodesThisRun.add(groupCode);
+        stats.autoDiscovered++;
+        stats.autoDiscoveredNames.push(`${productName} (${internalCode})`);
+
+        autoOps.push({
+          updateOne: {
+            filter: {
+              supplierCategory: internalCode,
+              name: productName
+            },
+            update: {
+              $set: {
+                supplierId: cheapest.code,
+                supplierCategory: internalCode,
+                providerCode: cheapest.provider_code,
+                supplierPriceRaw: cheapest.price,
+                allProviders: allProvidersData,
+                customPrice: null,
+                price: brlPrice,
+                category: category?._id,
+                categoryName: category?.name,
+                lastSyncedAt: new Date(),
+                isSupplierAvailable: true
+              },
+              $setOnInsert: {
+                name: productName,
+                displayName: productName,
+                isActive: true, // 🆕 straight to live, no review
+                featured: false,
+                markup: 0,
+                requiresUserId: true,
+                requiresServer: true,
+                requiresZone: false,
+                requiresNickname: false
+              }
+            },
+            upsert: true
+          }
+        });
+      });
+    }
+
+    if (autoOps.length > 0) {
+      console.log(`\n🆕 AUTO-DISCOVERED ${autoOps.length} new product(s):`);
+      stats.autoDiscoveredNames.forEach(n => console.log(`   + ${n}`));
+      const autoResult = await Product.bulkWrite(autoOps);
+      stats.autoCreated = autoResult.upsertedCount || 0;
+      stats.autoUpdated = autoResult.modifiedCount || 0;
+    }
+
     if (ops.length > 0) {
       const result = await Product.bulkWrite(ops);
       stats.created = result.upsertedCount || 0;
@@ -793,6 +926,7 @@ if (
 
     console.log(`✅ Synced: ${stats.matched}`);
     console.log(`❌ Missing: ${stats.missing}`);
+    console.log(`🆕 Auto-discovered: ${stats.autoDiscovered || 0}`);
 
     if (stats.missingNames.length) {
 
