@@ -654,15 +654,38 @@ exports.syncProducts = async () => {
 
         console.log(`❌ ${fp.name} → no providers`);
 
-        // ✅ mark unavailable in DB
+        // ✅ mark unavailable in DB — upsert so the product exists with the
+        // CONFIG name even if it has never matched a supplier before.
+        // Without upsert, a product that never synced once would just be
+        // invisible in the admin panel instead of showing as "unavailable".
+        const missingCategory = categoryMap[fp.supplierCategory];
+
         await Product.findOneAndUpdate(
           {
             supplierCategory: fp.supplierCategory,
             name: fp.name
           },
           {
-            isSupplierAvailable: false
-          }
+            $set: {
+              isSupplierAvailable: false
+            },
+            $setOnInsert: {
+              name: fp.name,
+              displayName: fp.name,
+              supplierCategory: fp.supplierCategory,
+              category: missingCategory?._id,
+              categoryName: missingCategory?.name,
+              price: 0,
+              isActive: true,
+              featured: false,
+              markup: 0,
+              requiresUserId: true,
+              requiresServer: true,
+              requiresZone: false,
+              requiresNickname: false
+            }
+          },
+          { upsert: true }
         );
 
         continue;
