@@ -21,6 +21,87 @@ const API_KEY = process.env.SUPPLIER_API_KEY;
 // e.g. 'ZZZ300-S116-br' -> 'ZZZ300' | 'AB1580_110' -> 'AB1580_110' (no -S suffix, untouched)
 const getBaseCode = (code) => code.split(/-S\d/)[0];
 
+// 🔹 FUZZY MATCH HELPERS — used when the exact configured supplierId code
+// no longer exists on the supplier's side (they renamed/restructured it).
+// Instead of failing, we look for the closest equivalent within the same
+// product "family" and auto-adopt it.
+
+// Letters-only prefix, e.g. 'HSTRLOG60' -> 'HSTRLOG', 'VVAL400BR' -> 'VVAL'
+const letterPrefix = (code) => (code.match(/^[A-Za-z]+/) || [''])[0];
+
+// 3-char family key groups codes from the same game even if the supplier
+// changes the exact prefix (HSTR -> HSTRLOG both give family 'HST')
+const familyKey = (code) => letterPrefix(code).slice(0, 3).toUpperCase();
+
+// First number found in a product name, e.g. "300 + 30 Crystals" -> 300
+const extractNumber = (name) => {
+  const m = (name || '').match(/\d+/);
+  return m ? parseInt(m[0], 10) : null;
+};
+
+// Count shared significant words between two names (for non-numeric
+// products like "Express Supply Pass", "Monthly Pass", etc.)
+const STOPWORDS = new Set(['the', 'and', 'of', 'a', 'pack', 'for']);
+const wordOverlapScore = (a, b) => {
+  const wordsOf = (s) =>
+    (s || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(w => w.length > 2 && !STOPWORDS.has(w));
+  const setA = new Set(wordsOf(a));
+  const setB = wordsOf(b);
+  return setB.filter(w => setA.has(w)).length;
+};
+
+// Given a FIXED_PRODUCTS entry and the full supplier product list, find the
+// closest equivalent when the exact code no longer exists. Returns an array
+// of candidate products (same shape as exact-match results) or [].
+const findFuzzyCandidates = (fp, products) => {
+  const baseCode = getBaseCode(fp.supplierId);
+  const family = familyKey(baseCode);
+
+  const candidatePool = products.filter(p =>
+    p.price > 0 &&
+    p.status !== 'empty' &&
+    familyKey(getBaseCode(p.code)) === family
+  );
+
+  if (candidatePool.length === 0) return [];
+
+  const targetNum = extractNumber(fp.name);
+
+  if (targetNum !== null) {
+    const numbered = candidatePool
+      .map(p => ({ p, num: extractNumber(p.name) }))
+      .filter(x => x.num !== null);
+
+    if (numbered.length === 0) return [];
+
+    const exact = numbered.filter(x => x.num === targetNum);
+    if (exact.length > 0) return exact.map(x => x.p);
+
+    // no exact amount — accept the closest one, but only within 50%
+    // tolerance, so we don't silently substitute a wildly different pack
+    numbered.sort((a, b) => Math.abs(a.num - targetNum) - Math.abs(b.num - targetNum));
+    const closest = numbered[0];
+    const tolerance = targetNum * 0.5;
+    if (Math.abs(closest.num - targetNum) > tolerance) return [];
+
+    return numbered.filter(x => x.num === closest.num).map(x => x.p);
+  }
+
+  // No number in name (passes/memberships/etc.) — match by shared words
+  const scored = candidatePool
+    .map(p => ({ p, score: wordOverlapScore(fp.name, p.name) }))
+    .filter(x => x.score > 0);
+
+  if (scored.length === 0) return [];
+
+  scored.sort((a, b) => b.score - a.score);
+  const topScore = scored[0].score;
+  return scored.filter(x => x.score === topScore).map(x => x.p);
+};
+
 // 🔹 GAME REQUIREMENTS MAPPING
 const getGameRequirements = (gameName) => {
   // Games that only need User ID
@@ -643,6 +724,22 @@ exports.syncProducts = async () => {
         p.status !== 'empty'
       );
 
+      let usedFuzzyMatch = false;
+
+      // 🧩 FUZZY FALLBACK — exact code didn't match (supplier renamed/
+      // restructured it). Look for the closest equivalent in the same
+      // product family before giving up. This auto-adopted match goes
+      // live immediately (no manual review), per agreed behavior.
+      if (allProviders.length === 0) {
+        const fuzzyMatches = findFuzzyCandidates(fp, products);
+        if (fuzzyMatches.length > 0) {
+          allProviders.push(...fuzzyMatches);
+          usedFuzzyMatch = true;
+          stats.fuzzyMatched = (stats.fuzzyMatched || 0) + 1;
+          console.log(`🧩 ${fp.name} (${baseCode}) → exact code gone, fuzzy-matched to:`, fuzzyMatches.map(p => p.code));
+        }
+      }
+
       if (allProviders.length === 0) {
 
         // 🔍 DEBUG: temporary — log similar codes to help diagnose remaining misses
@@ -925,6 +1022,7 @@ if (
     console.log('\n════════ SYNC SUMMARY ════════');
 
     console.log(`✅ Synced: ${stats.matched}`);
+    console.log(`🧩 Fuzzy-matched (code changed on supplier side): ${stats.fuzzyMatched || 0}`);
     console.log(`❌ Missing: ${stats.missing}`);
     console.log(`🆕 Auto-discovered: ${stats.autoDiscovered || 0}`);
 
